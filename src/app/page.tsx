@@ -288,16 +288,19 @@ export default function Home() {
           left: '50%',
           transform: 'translateX(-50%)'
         }}>
-          <div style={{ display:'flex', alignItems:'center', gap:'12px' }}>
-            <div style={{ width: 40, height: 40, borderRadius: 12, background: 'linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: 'var(--accent-shadow)', position: 'relative', overflow: 'hidden' }}>
-              <svg width={24} height={24} viewBox="0 0 24 24" fill="none">
-                <path d="M12 21C12 21 6 14 6 9.5C6 6.5 8.7 4 12 4C15.3 4 18 6.5 18 9.5C18 14 12 21 12 21Z" fill="white" fillOpacity="0.2" />
-                <path d="M12 19C12 19 8 13.5 8 9.5C8 7.5 9.8 6 12 6C14.2 6 16 7.5 16 9.5C16 13.5 12 19 12 19Z" fill="white" />
-                <path d="M4 17C6 19 9 19 12 17C15 15 18 15 20 17" stroke="white" strokeWidth="2" strokeLinecap="round" />
-              </svg>
-              <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent)', animation: 'logo-shimmer 2.5s infinite ease-in-out' }} />
-            </div>
-            <span style={{ fontSize:'22px', fontWeight:900, letterSpacing:'-0.05em', background: 'linear-gradient(to bottom, #fff, #94a3b8)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Motion</span>
+          <div style={{ display:'flex', alignItems:'center', gap:'16px' }}>
+            <motion.img 
+              src="/logo.png" 
+              alt="Motion Logo" 
+              style={{ 
+                height: '54px', 
+                width: 'auto',
+                filter: 'drop-shadow(0 0 20px rgba(124,58,237,0.3))',
+                mixBlendMode: 'screen'
+              }}
+              whileHover={{ scale: 1.05, rotate: -2 }}
+            />
+            <span style={{ fontSize:'24px', fontWeight:900, letterSpacing:'-0.05em', background: 'linear-gradient(to bottom, #fff, #94a3b8)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Motion</span>
           </div>
           <div style={{ display:'flex', gap:'16px' }}>
             <a href="/admin" className="btn btn-secondary btn-sm" style={{ backdropFilter: 'blur(10px)', background: 'rgba(255,255,255,0.03)' }}>Sign In</a>
@@ -432,9 +435,9 @@ export default function Home() {
               >
                 <div style={{ position: 'absolute', inset: '-10%', background: 'radial-gradient(circle, rgba(124,58,237,0.15) 0%, transparent 70%)', zIndex: -1, opacity: 0.6 }} />
                 <motion.img 
-                  src="/walrus-2.jpg" 
+                  src="/walrus-2.png" 
                   alt="Walrus Mascot"
-                  style={{ width: '100%', maxWidth: '480px', height: 'auto', filter: 'drop-shadow(0 30px 60px rgba(0,0,0,0.6))' }}
+                  style={{ width: '100%', maxWidth: '480px', height: 'auto', filter: 'drop-shadow(0 30px 60px rgba(0,0,0,0.6))', mixBlendMode: 'screen' }}
                   animate={{ 
                     y: [0, -25, 0],
                     rotate: [0, 2, 0, -2, 0]
@@ -487,7 +490,7 @@ export default function Home() {
                 transition={{ duration: 1, delay: 0.2 }}
                 style={{ flex: '1 1 300px', display: 'flex', justifyContent: 'center' }}
               >
-                <img src="/walrus-1.jpg" alt="Walrus" style={{ width: '100%', maxWidth: '400px', height: 'auto', filter: 'drop-shadow(0 20px 40px rgba(0,0,0,0.4))' }} />
+                <img src="/walrus-1.png" alt="Walrus" style={{ width: '100%', maxWidth: '400px', height: 'auto', filter: 'drop-shadow(0 20px 40px rgba(0,0,0,0.4))', mixBlendMode: 'screen' }} />
               </motion.div>
             </div>
           </section>
