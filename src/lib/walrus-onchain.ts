@@ -7,15 +7,32 @@ import type { WalrusUploadResponse } from '@/types/motion';
 import { dAppKit } from '@/app/dapp-kit';
 import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from '@mysten/sui/jsonRpc';
 import { WalrusClient } from '@mysten/walrus';
+import { NETWORK } from '@/lib/walrus';
 
-const suiClient = new SuiJsonRpcClient({ url: getJsonRpcFullnodeUrl('mainnet'), network: 'mainnet' });
-
+let suiClient: SuiJsonRpcClient | null = null;
 let walrusClient: WalrusClient | null = null;
-export function getWalrusClient() {
-  if (!walrusClient) {
-    walrusClient = new WalrusClient({ network: 'mainnet', suiClient: suiClient as any });
+
+function initClients() {
+  if (!suiClient) {
+    console.log("ON-CHAIN SYNC: Initializing with", NETWORK);
+    suiClient = new SuiJsonRpcClient({ 
+      url: getJsonRpcFullnodeUrl(NETWORK as any), 
+      network: NETWORK as any 
+    });
   }
-  return walrusClient;
+  if (!walrusClient) {
+    walrusClient = new WalrusClient({ network: NETWORK as any, suiClient: suiClient as any });
+  }
+}
+
+export function getWalrusClient() {
+  initClients();
+  return walrusClient!;
+}
+
+export function getSuiClient() {
+  initClients();
+  return suiClient!;
 }
 
 export async function uploadOnChain(
@@ -45,7 +62,7 @@ export async function uploadOnChain(
     
     // --- STEP: TRANSACTION MONITOR ---
     console.log('[Walrus] Snapshotting blockchain state...');
-    const preTxs = await suiClient.queryTransactionBlocks({ filter: { FromAddress: ownerAddress }, limit: 1 });
+    const preTxs = await getSuiClient().queryTransactionBlocks({ filter: { FromAddress: ownerAddress }, limit: 1 });
     const lastDigestBefore = preTxs.data[0]?.digest;
 
     // Step A: Registration Transaction
@@ -87,7 +104,7 @@ export async function uploadOnChain(
       console.warn('[Walrus] Empty response. Searching for transaction...');
       for (let i = 0; i < 4; i++) {
         await new Promise(r => setTimeout(r, 3000));
-        const postTxs = await suiClient.queryTransactionBlocks({ filter: { FromAddress: ownerAddress }, limit: 3 });
+        const postTxs = await getSuiClient().queryTransactionBlocks({ filter: { FromAddress: ownerAddress }, limit: 3 });
         const newTx = postTxs.data.find(tx => tx.digest !== lastDigestBefore);
         if (newTx) { digest = newTx.digest; break; }
       }
@@ -109,7 +126,7 @@ export async function uploadOnChain(
     // Step C: Certification
     const certTx = await client.certifyBlobTransaction({ blobId, confirmations } as any);
 
-    const preCertTxs = await suiClient.queryTransactionBlocks({ filter: { FromAddress: ownerAddress }, limit: 1 });
+    const preCertTxs = await getSuiClient().queryTransactionBlocks({ filter: { FromAddress: ownerAddress }, limit: 1 });
     const lastDigestBeforeCert = preCertTxs.data[0]?.digest;
 
     console.log('[Walrus] Requesting wallet approval for Certification...');

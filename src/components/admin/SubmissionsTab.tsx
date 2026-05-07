@@ -5,6 +5,9 @@ import type { Submission, SubmissionStatus } from '@/types/motion';
 import { readJsonFromWalrus, getWalrusScanUrl, uploadJsonToWalrus, getWalrusBlobUrl } from '@/lib/walrus';
 import { getSubIds, getAllSubIds, getAdmins } from '@/lib/fields';
 import { getIndexedBlobIds, onNewSubmission } from '@/lib/submission-index';
+import { motion } from 'framer-motion';
+
+function shorten(a: string) { return `${a.slice(0,6)}…${a.slice(-4)}`; }
 
 const STATUS_COLORS: Record<SubmissionStatus, string> = {
   pending: '#fbbf24', approved: '#4ade80', rejected: '#f87171',
@@ -117,11 +120,15 @@ export function SubmissionsTab({ formBlobId: initialFormBlobId }: { formBlobId: 
 
     for (const adminAddr of adminAddresses) {
       try {
-        const { SuiJsonRpcClient, getJsonRpcFullnodeUrl } = await import('@mysten/sui/jsonRpc');
+        const { SuiJsonRpcClient } = await import('@mysten/sui/jsonRpc');
+        const { getJsonRpcFullnodeUrl } = await import('@mysten/sui/jsonRpc');
+        const { NETWORK } = await import('@/lib/walrus');
         const { getWalrusClient } = await import('@/lib/walrus-onchain');
+        
+        console.log("SUBMISSIONS SYNC: Using network", NETWORK);
         const client = new SuiJsonRpcClient({ 
-          url: getJsonRpcFullnodeUrl('mainnet'),
-          network: 'mainnet'
+          url: getJsonRpcFullnodeUrl(NETWORK as any),
+          network: NETWORK as any
         });
         const structType = await getWalrusClient().getBlobType();
 
@@ -296,109 +303,178 @@ export function SubmissionsTab({ formBlobId: initialFormBlobId }: { formBlobId: 
 
       {/* ── List ─────────────────────────────────────────── */}
       {loading ? (
-        <div style={{ display: 'flex', justifyContent: 'center', padding: '60px', color: 'var(--text-3)', gap: '10px', flexDirection: 'column', alignItems: 'center' }}>
-          <span className="spinner" style={{ width: '22px', height: '22px' }} />
-          <span style={{ fontSize: '13px' }}>Loading submissions…</span>
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '100px 0', color: 'var(--text-3)', gap: '16px', flexDirection: 'column', alignItems: 'center' }}>
+          <div className="spinner" style={{ width: '32px', height: '32px', borderWidth: '3px' }} />
+          <span style={{ fontSize: '14px', fontWeight: 600, letterSpacing: '0.02em' }}>Fetching submissions from Walrus...</span>
         </div>
       ) : filtered.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '60px', color: 'var(--text-3)', fontSize: '14px', lineHeight: 2 }}>
-          📭 No submissions yet.<br />
-          <span style={{ fontSize: '12px' }}>
-            Submissions appear automatically when users submit the form.
-          </span>
+        <div style={{ 
+          textAlign: 'center', padding: '100px 40px', borderRadius: '24px', 
+          border: '1px dashed var(--border)', background: 'rgba(255,255,255,0.01)',
+          color: 'var(--text-3)', fontSize: '15px' 
+        }}>
+          <div style={{ fontSize: '40px', marginBottom: '16px', opacity: 0.5 }}>📭</div>
+          <p style={{ fontWeight: 600, color: 'var(--text-2)', marginBottom: '4px' }}>No submissions found</p>
+          <p style={{ fontSize: '13px' }}>Submissions for this form will appear here in real-time.</p>
         </div>
-      ) : filtered.map(s => (
-        <div key={s.id} className="card" style={{ padding: 0, overflow: 'hidden' }}>
-          {/* Header */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '14px 16px', cursor: 'pointer' }}
-            onClick={() => setExpanded(e => e === s.id ? null : s.id)}>
-            <div style={{ width: 8, height: 8, borderRadius: '50%', background: STATUS_COLORS[s.status], flexShrink: 0 }} />
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-1)' }}>
-                {(s.data.project_name as string) || 'Unnamed Project'}
-              </p>
-              <p style={{ fontSize: '11px', color: 'var(--text-3)' }}>
-                {(s.data.session_select as string) && <span style={{ color: 'var(--accent-2)', marginRight: '6px' }}>{s.data.session_select as string}</span>}
-                {(s.data.leader_name as string) || ''}
-                {' · '}{new Date(s.timestamp).toLocaleDateString('en-GB')}
-                {' · '}{s.submitterAddress ? `${s.submitterAddress.slice(0, 8)}…` : 'Anonymous'}
-              </p>
-            </div>
-            <span style={{
-              fontSize: '11px', fontWeight: 600, padding: '3px 10px', borderRadius: '999px', flexShrink: 0,
-              background: `${STATUS_COLORS[s.status]}18`, color: STATUS_COLORS[s.status],
-              border: `1px solid ${STATUS_COLORS[s.status]}30`,
-            }}>
-              {s.status}
-            </span>
-            <span style={{ color: 'var(--text-3)', fontSize: '12px' }}>{expanded === s.id ? '▲' : '▼'}</span>
-          </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          {filtered.map(s => (
+            <motion.div 
+              layout
+              key={s.id} 
+              className="card" 
+              style={{ 
+                padding: 0, overflow: 'hidden', 
+                border: expanded === s.id ? '1px solid var(--accent-soft)' : '1px solid var(--border)',
+                boxShadow: expanded === s.id ? '0 8px 30px -10px rgba(139, 92, 246, 0.15)' : 'none',
+                transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)'
+              }}
+            >
+              {/* Header */}
+              <div 
+                style={{ display: 'flex', alignItems: 'center', gap: '20px', padding: '20px 24px', cursor: 'pointer' }}
+                onClick={() => setExpanded(e => e === s.id ? null : s.id)}
+              >
+                <div style={{ 
+                  width: 40, height: 40, borderRadius: 12, 
+                  background: `${STATUS_COLORS[s.status]}10`, 
+                  border: `1px solid ${STATUS_COLORS[s.status]}30`,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  flexShrink: 0 
+                }}>
+                  <div style={{ width: 10, height: 10, borderRadius: '50%', background: STATUS_COLORS[s.status], boxShadow: `0 0 10px ${STATUS_COLORS[s.status]}` }} />
+                </div>
 
-          {/* Detail */}
-          {expanded === s.id && (
-            <div style={{ padding: '0 16px 16px', borderTop: '1px solid var(--border)' }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '14px', maxHeight: '520px', overflowY: 'auto' }}>
-                {Object.entries(s.data).map(([k, v]) => (
-                  <div key={k} style={{ display: 'grid', gridTemplateColumns: '180px 1fr', gap: '8px', fontSize: '13px', alignItems: 'start' }}>
-                    <span style={{ color: 'var(--text-3)', fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', paddingTop: '2px' }}>
-                      {k.replace(/_/g, ' ')}
-                    </span>
-                    <span style={{ color: 'var(--text-1)', wordBreak: 'break-word', lineHeight: 1.5 }}>
-                      {typeof v === 'boolean' ? (v ? '✓ Yes' : '✗ No')
-                        : Array.isArray(v) ? v.join(', ')
-                        : v.toString().startsWith('http')
-                          ? <a href={v.toString()} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent-2)', textDecoration: 'none' }}>{v.toString()} ↗</a>
-                          : (typeof v === 'string' && /^[A-Za-z0-9_-]{43}$/.test(v))
-                            ? <div>
-                                <a href={getWalrusBlobUrl(v)} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent-2)', textDecoration: 'none', display: 'block', marginBottom: '8px' }}>
-                                  {v} ↗
-                                </a>
-                                <img src={getWalrusBlobUrl(v)} style={{ maxWidth: '100%', maxHeight: '200px', borderRadius: '8px', border: '1px solid var(--border)' }} onError={(e) => e.currentTarget.style.display = 'none'} />
-                              </div>
-                          : v.toString() || <em style={{ color: 'var(--text-3)' }}>—</em>}
-                    </span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '2px' }}>
+                    <p style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-1)', letterSpacing: '-0.01em' }}>
+                      {(s.data.project_name as string) || (s.data.name as string) || 'Untitled Submission'}
+                    </p>
+                    {s.data.session_select && (
+                      <span style={{ fontSize: '10px', fontWeight: 800, padding: '2px 8px', borderRadius: '4px', background: 'var(--accent-soft)', color: 'var(--accent-2)', textTransform: 'uppercase' }}>
+                        {s.data.session_select as string}
+                      </span>
+                    )}
                   </div>
-                ))}
-                {s.signature && (
-                  <div style={{ display: 'grid', gridTemplateColumns: '180px 1fr', gap: '8px', fontSize: '13px', alignItems: 'start' }}>
-                    <span style={{ color: 'var(--text-3)', fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Signature</span>
-                    <span style={{ fontFamily: 'var(--mono)', fontSize: '10px', color: '#4ade80', wordBreak: 'break-all' }}>{s.signature.slice(0, 80)}…</span>
+                  <p style={{ fontSize: '12px', color: 'var(--text-3)', fontWeight: 500 }}>
+                    {s.submitterAddress ? shorten(s.submitterAddress) : 'Anonymous'}
+                    <span style={{ margin: '0 8px', opacity: 0.3 }}>•</span>
+                    {new Date(s.timestamp).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                  </p>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                  <span style={{
+                    fontSize: '10px', fontWeight: 800, padding: '4px 12px', borderRadius: '6px', flexShrink: 0,
+                    background: `${STATUS_COLORS[s.status]}15`, color: STATUS_COLORS[s.status],
+                    border: `1px solid ${STATUS_COLORS[s.status]}25`,
+                    textTransform: 'uppercase', letterSpacing: '0.05em'
+                  }}>
+                    {s.status}
+                  </span>
+                  <div style={{ 
+                    color: 'var(--text-3)', transition: 'transform 0.3s', 
+                    transform: expanded === s.id ? 'rotate(180deg)' : 'none' 
+                  }}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
                   </div>
-                )}
-              </div>
-              {/* Actions */}
-              <div style={{ marginTop: '14px', paddingTop: '12px', borderTop: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <textarea className="textarea" rows={2} placeholder="Admin notes…"
-                  style={{ minHeight: 'unset', resize: 'none', fontSize: '13px' }}
-                  value={notes[s.id] ?? s.adminNotes ?? ''}
-                  onChange={e => setNotes(n => ({ ...n, [s.id]: e.target.value }))} />
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <button
-                    className="btn btn-sm"
-                    style={{ background: 'rgba(74,222,128,0.15)', color: '#4ade80', border: '1px solid rgba(74,222,128,0.3)', flex: 1 }}
-                    onClick={() => updateStatus(s, 'approved')}
-                    disabled={updatingId === s.id}
-                  >
-                    {updatingId === s.id ? <><span className="spinner" style={{ width: '12px', height: '12px' }} /> Saving…</> : '✓ Approve'}
-                  </button>
-                  <button
-                    className="btn btn-sm"
-                    style={{ background: 'rgba(248,113,113,0.15)', color: '#f87171', border: '1px solid rgba(248,113,113,0.3)', flex: 1 }}
-                    onClick={() => updateStatus(s, 'rejected')}
-                    disabled={updatingId === s.id}
-                  >
-                    {updatingId === s.id ? <><span className="spinner" style={{ width: '12px', height: '12px' }} /> Saving…</> : '✕ Reject'}
-                  </button>
-                  {s.blobId && (
-                    <a href={getWalrusScanUrl(s.blobId)} target="_blank" rel="noopener noreferrer"
-                      className="btn btn-ghost btn-sm" style={{ textDecoration: 'none' }}>Walruscan ↗</a>
-                  )}
                 </div>
               </div>
-            </div>
-          )}
+
+              {/* Detail */}
+              {expanded === s.id && (
+                <div style={{ padding: '0 24px 24px' }}>
+                  <div style={{ 
+                    display: 'flex', flexDirection: 'column', gap: '4px', 
+                    background: 'rgba(255,255,255,0.015)', borderRadius: '16px', border: '1px solid var(--border)',
+                    padding: '20px', marginTop: '4px'
+                  }}>
+                    {Object.entries(s.data).map(([k, v]) => (
+                      <div key={k} style={{ display: 'grid', gridTemplateColumns: '200px 1fr', gap: '20px', padding: '10px 0', borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
+                        <span style={{ color: 'var(--text-3)', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', paddingTop: '4px' }}>
+                          {k.replace(/_/g, ' ')}
+                        </span>
+                        <div style={{ color: 'var(--text-1)', fontSize: '14px', wordBreak: 'break-word', lineHeight: 1.6 }}>
+                          {typeof v === 'boolean' ? (
+                            <span style={{ color: v ? 'var(--success)' : 'var(--error)', fontWeight: 600 }}>{v ? '✓ Yes' : '✗ No'}</span>
+                          ) : Array.isArray(v) ? (
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                              {v.map((item, i) => <span key={i} style={{ padding: '2px 8px', borderRadius: '4px', background: 'rgba(255,255,255,0.05)', fontSize: '12px' }}>{item}</span>)}
+                            </div>
+                          ) : v.toString().startsWith('http') ? (
+                            <a href={v.toString()} target="_blank" rel="noopener noreferrer" className="link-premium">
+                              {v.toString()} <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ marginLeft: 4 }}><path d="M7 17L17 7M7 7h10v10"/></svg>
+                            </a>
+                          ) : (typeof v === 'string' && /^[A-Za-z0-9_-]{43}$/.test(v)) ? (
+                            <div style={{ marginTop: '4px' }}>
+                              <a href={getWalrusBlobUrl(v)} target="_blank" rel="noopener noreferrer" className="link-premium" style={{ marginBottom: '12px', display: 'inline-flex' }}>
+                                View Asset <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ marginLeft: 4 }}><path d="M7 17L17 7M7 7h10v10"/></svg>
+                              </a>
+                              <div style={{ position: 'relative', borderRadius: '12px', overflow: 'hidden', border: '1px solid var(--border)', maxWidth: '300px' }}>
+                                <img src={getWalrusBlobUrl(v)} style={{ width: '100%', display: 'block', maxHeight: '300px', objectFit: 'contain' }} onError={(e) => e.currentTarget.parentElement!.style.display = 'none'} />
+                              </div>
+                            </div>
+                          ) : (
+                            <span style={{ fontWeight: 500 }}>{v.toString() || <em style={{ color: 'var(--text-3)', fontWeight: 400 }}>—</em>}</span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Actions Section */}
+                  <div style={{ marginTop: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    <div style={{ position: 'relative' }}>
+                      <label className="input-label" style={{ fontSize: '11px', fontWeight: 800, color: 'var(--text-3)', textTransform: 'uppercase', marginBottom: '8px', display: 'block' }}>Admin Evaluation</label>
+                      <textarea 
+                        className="textarea" 
+                        rows={3} 
+                        placeholder="Add internal feedback or decision notes..."
+                        value={notes[s.id] ?? s.adminNotes ?? ''}
+                        onChange={e => setNotes(n => ({ ...n, [s.id]: e.target.value }))}
+                        style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border)', borderRadius: '12px' }}
+                      />
+                    </div>
+                    
+                    <div style={{ display: 'flex', gap: '12px' }}>
+                      <button
+                        className="btn btn-sm"
+                        style={{ 
+                          background: 'rgba(74, 222, 128, 0.08)', color: '#4ade80', border: '1px solid rgba(74, 222, 128, 0.2)', 
+                          flex: 1, height: '44px', fontWeight: 700, borderRadius: '12px' 
+                        }}
+                        onClick={() => updateStatus(s, 'approved')}
+                        disabled={updatingId === s.id}
+                      >
+                        {updatingId === s.id ? <div className="spinner" style={{ width: '14px', height: '14px' }} /> : 'Approve Submission'}
+                      </button>
+                      <button
+                        className="btn btn-sm"
+                        style={{ 
+                          background: 'rgba(248, 113, 113, 0.08)', color: '#f87171', border: '1px solid rgba(248, 113, 113, 0.2)', 
+                          flex: 1, height: '44px', fontWeight: 700, borderRadius: '12px' 
+                        }}
+                        onClick={() => updateStatus(s, 'rejected')}
+                        disabled={updatingId === s.id}
+                      >
+                        {updatingId === s.id ? <div className="spinner" style={{ width: '14px', height: '14px' }} /> : 'Reject Submission'}
+                      </button>
+                      {s.blobId && (
+                        <a href={getWalrusScanUrl(s.blobId)} target="_blank" rel="noopener noreferrer"
+                          className="btn btn-secondary btn-sm" style={{ textDecoration: 'none', width: 'auto', display: 'flex', alignItems: 'center', borderRadius: '12px' }}>
+                          Scanner ↗
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </motion.div>
+          ))}
         </div>
-      ))}
+      )}
+
     </div>
   );
 }

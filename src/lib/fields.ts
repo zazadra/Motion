@@ -82,7 +82,7 @@ export function loadAdminConfig(): FormConfig | null {
 // ── Default Walrus Sessions fields ────────────────────────────────
 export const DEFAULT_FIELDS: SessionField[] = [
   { id:'project_name',      label:'Project Name',                                          type:'text',     required:true,  enabled:true,  placeholder:'Your project name' },
-  { id:'session_select',    label:'Please select the session *',                             type:'select',   required:true,  enabled:true,  options:['Walrus Session 2-Walrus Feedback'] },
+  { id:'session_select',    label:'Session Selection',                                     type:'checkbox', required:true,  enabled:true  },
   { id:'leader_name',       label:'Team Leader Name',                                      type:'text',     required:true,  enabled:true,  placeholder:'Full name' },
   { id:'leader_email',      label:'Team Leader Email',                                     type:'email',    required:true,  enabled:true,  placeholder:'email@example.com' },
   { id:'newsletter',        label:'I would be open to receiving your newsletter',          type:'checkbox', required:false, enabled:true  },

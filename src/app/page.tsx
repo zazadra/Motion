@@ -217,35 +217,67 @@ export default function Home() {
   // ── No form ──────────────────────────────────────────────────
   if (!new URLSearchParams(window.location.search).get('form') && formBlobId === 'default') {
     return (
-      <div style={{ minHeight:'100dvh', backgroundColor:'var(--bg)', backgroundImage:'radial-gradient(ellipse 80% 60% at 50% 0%, rgba(124,58,237,0.13) 0%, transparent 80%)', display: 'flex', flexDirection: 'column' }}>
-        <header style={{ padding:'24px', display:'flex', alignItems:'center', justifyContent:'space-between', maxWidth:'1080px', margin:'0 auto', width:'100%' }}>
-          <div style={{ display:'flex', alignItems:'center', gap:'9px' }}>
-            <svg width={28} height={28} viewBox="0 0 32 32" fill="none"><rect width={32} height={32} rx={8} fill="rgba(124,58,237,0.18)"/><path d="M10 22V14l6-4 6 4v8" stroke="#a78bfa" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"/><path d="M13 22v-5h6v5" stroke="#7c3aed" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"/></svg>
-            <span style={{ fontSize:'18px', fontWeight:700, letterSpacing:'-0.03em' }}>Motion</span>
+      <div style={{ minHeight:'100dvh', backgroundColor:'var(--bg)', display: 'flex', flexDirection: 'column' }}>
+        <header style={{ padding:'32px 24px', display:'flex', alignItems:'center', justifyContent:'space-between', maxWidth:'1200px', margin:'0 auto', width:'100%', zIndex: 10 }}>
+          <div style={{ display:'flex', alignItems:'center', gap:'12px' }}>
+            <div style={{ width: 36, height: 36, borderRadius: 10, background: 'linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: 'var(--accent-shadow)' }}>
+              <svg width={20} height={20} viewBox="0 0 32 32" fill="none"><path d="M10 22V14l6-4 6 4v8" stroke="#fff" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"/><path d="M13 22v-5h6v5" stroke="rgba(255,255,255,0.7)" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"/></svg>
+            </div>
+            <span style={{ fontSize:'20px', fontWeight:800, letterSpacing:'-0.04em', background: 'linear-gradient(to bottom, #fff, #94a3b8)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Motion</span>
           </div>
-          <div style={{ display:'flex', gap:'12px' }}>
-            <a href="/admin" className="btn btn-primary" style={{ textDecoration:'none' }}>Create Your Form</a>
+          <div style={{ display:'flex', gap:'16px' }}>
+            <a href="/admin" className="btn btn-secondary btn-sm">Sign In</a>
+            <a href="/admin" className="btn btn-primary btn-sm">Get Started</a>
           </div>
         </header>
 
-        <main style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'48px 24px', textAlign:'center' }}>
-          <motion.div initial={{opacity:0,y:20}} animate={{opacity:1,y:0}} transition={{duration:0.6,ease:[0.16,1,0.3,1]}}>
-            <h1 style={{ fontSize:'64px', fontWeight:800, letterSpacing:'-0.04em', lineHeight:1.1, marginBottom:'24px', maxWidth:'800px', margin:'0 auto 24px' }}>
+        <main style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'80px 24px', textAlign:'center', position: 'relative' }}>
+          <motion.div 
+            initial={{opacity:0, y:30}} 
+            animate={{opacity:1, y:0}} 
+            transition={{duration:0.8, ease:[0.16,1,0.3,1]}}
+            style={{ maxWidth: '900px', zIndex: 5 }}
+          >
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '6px 12px', borderRadius: '999px', background: 'var(--accent-soft)', border: '1px solid var(--accent-glow)', marginBottom: '32px' }}>
+              <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent-2)', boxShadow: '0 0 8px var(--accent-2)' }} />
+              <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--accent-2)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Powered by Walrus & Sui</span>
+            </div>
+            
+            <h1 style={{ fontSize:'clamp(48px, 8vw, 84px)', fontWeight:900, letterSpacing:'-0.05em', lineHeight:0.95, marginBottom:'32px', color: '#fff' }}>
               Decentralized forms<br/>
-              <span style={{ color:'var(--accent-2)' }}>owned by you.</span>
+              <span style={{ background: 'linear-gradient(135deg, var(--accent-2) 0%, var(--cyan) 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>owned by you.</span>
             </h1>
-            <p style={{ fontSize:'18px', color:'var(--text-2)', lineHeight:1.6, maxWidth:'600px', margin:'0 auto 48px' }}>
-              Motion lets anyone create forms, surveys, and applications that store data 100% on-chain using Walrus. No backend. No database. Total control.
+            
+            <p style={{ fontSize:'clamp(16px, 4vw, 20px)', color:'var(--text-2)', lineHeight:1.6, maxWidth:'640px', margin:'0 auto 56px', fontWeight: 500 }}>
+              Motion lets you create forms, surveys, and applications that store data 100% on-chain. No tracking, no middleman, total sovereignty.
             </p>
-            <div style={{ display:'flex', gap:'16px', justifyContent:'center' }}>
-              <a href="/admin" className="btn btn-primary btn-lg" style={{ textDecoration:'none', padding:'0 32px' }}>Start Building for Free</a>
-              <a href="https://walrus.space" target="_blank" rel="noopener noreferrer" className="btn btn-secondary btn-lg" style={{ textDecoration:'none', padding:'0 32px' }}>Learn about Walrus</a>
+            
+            <div style={{ display:'flex', gap:'20px', justifyContent:'center', flexWrap: 'wrap' }}>
+              <a href="/admin" className="btn btn-primary btn-lg" style={{ textDecoration:'none', padding:'0 40px', minWidth: '200px' }}>
+                Start Building Free
+              </a>
+              <a href="https://walrus.space" target="_blank" rel="noopener noreferrer" className="btn btn-secondary btn-lg" style={{ textDecoration:'none', padding:'0 40px', minWidth: '200px' }}>
+                How it Works
+              </a>
             </div>
           </motion.div>
+
+          {/* Floating decorative elements */}
+          <motion.div 
+            animate={{ y: [0, -20, 0] }}
+            transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
+            style={{ position: 'absolute', top: '20%', right: '10%', width: 120, height: 120, borderRadius: '50%', background: 'radial-gradient(circle, var(--accent-glow) 0%, transparent 70%)', filter: 'blur(40px)', zIndex: 1 }}
+          />
+          <motion.div 
+            animate={{ y: [0, 20, 0] }}
+            transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
+            style={{ position: 'absolute', bottom: '20%', left: '10%', width: 160, height: 160, borderRadius: '50%', background: 'radial-gradient(circle, rgba(34, 211, 238, 0.1) 0%, transparent 70%)', filter: 'blur(50px)', zIndex: 1 }}
+          />
         </main>
       </div>
     );
   }
+
 
   if (status === 'success') return (
     <div style={{ minHeight:'100dvh', display:'flex', alignItems:'center', justifyContent:'center', backgroundColor:'var(--bg)', backgroundImage:'radial-gradient(ellipse 80% 40% at 50% 0%, rgba(124,58,237,0.13) 0%, transparent 60%)' }}>

@@ -68,40 +68,64 @@ export default function AdminPage() {
 
   // ── Admin dashboard ─────────────────────────────────────────
   return (
-    <div style={{ minHeight:'100dvh', backgroundColor:'var(--bg)', backgroundImage:'radial-gradient(ellipse 80% 35% at 50% 0%, rgba(124,58,237,0.1) 0%, transparent 60%)' }}>
+    <div style={{ minHeight:'100dvh', backgroundColor:'var(--bg)', position: 'relative' }}>
       {/* Header */}
-      <header style={{ position:'sticky', top:0, zIndex:40, borderBottom:'1px solid var(--border)', backdropFilter:'blur(16px)', background:'rgba(7,9,15,0.85)' }}>
-        <div style={{ maxWidth:'1100px', margin:'0 auto', padding:'0 24px', height:'56px', display:'flex', alignItems:'center', gap:'16px' }}>
-          <a href="/" style={{ display:'flex', alignItems:'center', gap:'8px', textDecoration:'none' }}>
-            <svg width={22} height={22} viewBox="0 0 32 32" fill="none"><rect width={32} height={32} rx={8} fill="rgba(124,58,237,0.18)"/><path d="M10 22V14l6-4 6 4v8" stroke="#a78bfa" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"/><path d="M13 22v-5h6v5" stroke="#7c3aed" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"/></svg>
-            <span style={{ fontSize:'15px', fontWeight:700, letterSpacing:'-0.03em' }}>Motion</span>
+      <header style={{ position:'sticky', top:0, zIndex:100, borderBottom:'1px solid var(--border)', backdropFilter:'blur(24px)', background:'rgba(5,6,11,0.8)' }}>
+        <div style={{ maxWidth:'1200px', margin:'0 auto', padding:'0 24px', height:'64px', display:'flex', alignItems:'center', gap:'24px' }}>
+          <a href="/" style={{ display:'flex', alignItems:'center', gap:'10px', textDecoration:'none' }}>
+            <div style={{ width: 30, height: 30, borderRadius: 8, background: 'linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: 'var(--accent-shadow)' }}>
+              <svg width={16} height={16} viewBox="0 0 32 32" fill="none"><path d="M10 22V14l6-4 6 4v8" stroke="#fff" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"/><path d="M13 22v-5h6v5" stroke="rgba(255,255,255,0.7)" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"/></svg>
+            </div>
+            <span style={{ fontSize:'16px', fontWeight:800, letterSpacing:'-0.03em', color: '#fff' }}>Motion</span>
           </a>
-          <span style={{ fontSize:'12px', padding:'3px 10px', borderRadius:'999px', background:'rgba(239,68,68,0.1)', border:'1px solid rgba(239,68,68,0.2)', color:'#f87171' }}>Admin</span>
+          
+          <div style={{ padding: '2px 10px', borderRadius: '6px', background: 'rgba(139, 92, 246, 0.1)', border: '1px solid var(--accent-soft)', color: 'var(--accent-2)', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            Console
+          </div>
+
           <div style={{ flex:1 }} />
+          
           {/* Tabs */}
-          <nav style={{ display:'flex', gap:'2px' }}>
+          <nav style={{ display:'flex', background: 'rgba(255,255,255,0.03)', padding: '4px', borderRadius: '12px', border: '1px solid var(--border)' }}>
             {TABS.map(t => (
               <button key={t.key} onClick={() => setTab(t.key)}
-                className={`btn btn-sm ${tab===t.key?'btn-primary':'btn-ghost'}`} style={{ fontSize:'13px', gap:'6px' }}>
-                {t.icon} {t.label}
+                className={`btn btn-sm ${tab===t.key?'btn-primary':'btn-ghost'}`} 
+                style={{ 
+                  fontSize:'13px', 
+                  gap:'8px', 
+                  background: tab === t.key ? '' : 'transparent',
+                  color: tab === t.key ? '#fff' : 'var(--text-2)',
+                  borderRadius: '8px'
+                }}>
+                <span style={{ opacity: tab === t.key ? 1 : 0.7 }}>{t.icon}</span>
+                {t.label}
               </button>
             ))}
           </nav>
+          
+          <div style={{ width: '1px', height: '24px', background: 'var(--border)', margin: '0 8px' }} />
+
           {/* Wallet */}
-          <div style={{ position:'relative' }}>
-            <button className="addr-chip" onClick={() => { navigator.clipboard.writeText(account.address); setCopied(true); setTimeout(()=>setCopied(false),1800); }}
-              style={{ border:'none' }}>
-              <span className="addr-dot anim-pulse" />
-              <span className="mono">{shorten(account.address)}</span>
-              {copied && <span style={{ fontSize:'10px', color:'#4ade80' }}>✓</span>}
-            </button>
+          <div style={{ display:'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+              <button className="addr-chip" onClick={() => { navigator.clipboard.writeText(account.address); setCopied(true); setTimeout(()=>setCopied(false),1800); }}
+                style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)', padding: '6px 12px' }}>
+                <span className="addr-dot anim-pulse" />
+                <span className="mono" style={{ color: 'var(--text-1)' }}>{shorten(account.address)}</span>
+                {copied && <span style={{ fontSize:'10px', color:'var(--success)' }}>✓</span>}
+              </button>
+            </div>
             <button onClick={() => disconnect()}
-              style={{ marginLeft:'6px', fontSize:'11px', color:'var(--text-3)', background:'none', border:'none', cursor:'pointer', textDecoration:'underline', textUnderlineOffset:'2px' }}>
-              Disconnect
+              style={{ fontSize:'12px', fontWeight: 600, color:'var(--text-3)', background:'rgba(255,255,255,0.03)', border:'1px solid var(--border)', borderRadius: '8px', padding: '6px 10px', cursor:'pointer', transition: 'all 0.2s' }}
+              onMouseEnter={e => e.currentTarget.style.color = 'var(--error)'}
+              onMouseLeave={e => e.currentTarget.style.color = 'var(--text-3)'}
+            >
+              Sign Out
             </button>
           </div>
         </div>
       </header>
+
 
       {/* Content */}
       <main style={{ maxWidth:'1100px', margin:'0 auto', padding:'32px 24px' }}>

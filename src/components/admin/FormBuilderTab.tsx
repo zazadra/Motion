@@ -5,6 +5,7 @@ import type { FormConfig, SessionField, SessionFieldType } from '@/types/motion'
 import { uploadJsonOnChain } from '@/lib/walrus-onchain';
 import { saveAdminConfig } from '@/lib/fields';
 import { dAppKit } from '@/app/dapp-kit';
+import { motion } from 'framer-motion';
 
 function uid() { return Math.random().toString(36).slice(2, 9); }
 
@@ -35,143 +36,145 @@ function FieldEditor({ field, onChange, onRemove, sessionCount, onSessionCountCh
 
   return (
     <div style={{
-      borderRadius:'10px',
-      background: field.enabled ? 'rgba(124,58,237,0.06)' : 'rgba(255,255,255,0.02)',
-      border:`1px solid ${field.enabled ? 'rgba(124,58,237,0.22)' : 'var(--border)'}`,
-      transition:'all 0.15s', overflow:'hidden',
+      borderRadius:'16px',
+      background: field.enabled ? 'rgba(139, 92, 246, 0.03)' : 'rgba(255,255,255,0.01)',
+      border:`1px solid ${field.enabled ? 'var(--accent-soft)' : 'var(--border)'}`,
+      transition:'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+      overflow:'hidden',
+      boxShadow: field.enabled ? '0 4px 20px -10px rgba(139, 92, 246, 0.1)' : 'none',
+      marginBottom: '12px'
     }}>
       {/* Row header */}
-      <div style={{ display:'flex', alignItems:'center', gap:'10px', padding:'10px 14px', flexWrap: field.id === 'session_select' ? 'wrap' : 'nowrap' }}>
-        <span style={{ fontSize:'11px', fontWeight:600, padding:'2px 7px', borderRadius:'4px', background:`${FIELD_TYPE_COLORS[field.type]}15`, color:FIELD_TYPE_COLORS[field.type], flexShrink:0 }}>{field.type}</span>
+      <div style={{ display:'flex', alignItems:'center', gap:'16px', padding:'16px 20px', position: 'relative' }}>
+        <div style={{ 
+          width: 32, height: 32, borderRadius: 8, 
+          background: `${FIELD_TYPE_COLORS[field.type]}15`, 
+          display: 'flex', alignItems: 'center', justifyContent: 'center', 
+          border: `1px solid ${FIELD_TYPE_COLORS[field.type]}30`,
+          flexShrink: 0 
+        }}>
+          <span style={{ fontSize:'10px', fontWeight:800, color:FIELD_TYPE_COLORS[field.type], textTransform: 'uppercase' }}>{field.type[0]}</span>
+        </div>
 
         {/* Editable label */}
-        <input
-          className="input"
-          value={field.label}
-          onChange={e => onChange({ label: e.target.value })}
-          onClick={e => e.stopPropagation()}
-          style={{ flex:1, fontSize:'13px', padding:'4px 8px', height:'30px', background:'rgba(255,255,255,0.04)', minWidth: '120px' }}
-        />
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '2px' }}>
+          <input
+            className="input-minimal"
+            value={field.label}
+            placeholder="Field Label"
+            onChange={e => onChange({ label: e.target.value })}
+            style={{ 
+              fontSize:'15px', fontWeight: 600, color: field.enabled ? 'var(--text-1)' : 'var(--text-3)',
+              background: 'transparent', border: 'none', padding: 0, height: 'auto', outline: 'none'
+            }}
+          />
+          <span style={{ fontSize: '11px', color: 'var(--text-3)', fontWeight: 500, textTransform: 'capitalize' }}>{field.type} Field</span>
+        </div>
 
-        {/* INLINE Session Count — always visible for session_select */}
-        {/* REPLACED: Moved to expanded options below to satisfy user request "biarkan admin mengcustom di dalamnya" */}
+        {/* Action Group */}
+        <div style={{ display:'flex', alignItems:'center', gap:'12px' }}>
+          {/* Required toggle */}
+          {field.enabled && (
+            <button 
+              onClick={() => onChange({ required: !field.required })}
+              style={{ 
+                fontSize:'11px', fontWeight:700, padding:'4px 10px', borderRadius:'6px', border:'1px solid var(--border)', cursor:'pointer',
+                background: field.required ? 'rgba(239, 68, 68, 0.1)' : 'rgba(255,255,255,0.03)',
+                color: field.required ? '#f87171' : 'var(--text-3)',
+                transition: 'all 0.2s'
+              }}
+            >
+              {field.required ? 'REQUIRED' : 'OPTIONAL'}
+            </button>
+          )}
 
-        {/* Expand for more options */}
-        <button
-          title="More options"
-          onClick={() => setOpen(o => !o)}
-          style={{ fontSize:'12px', background:'none', border:'none', cursor:'pointer', color:'var(--text-3)', padding:'0 4px', flexShrink:0, lineHeight:1 }}
-        >{open ? '▲' : '⚙'}</button>
-
-        {/* Required toggle */}
-        {field.enabled && (
-          <button onClick={() => onChange({ required: !field.required })}
-            style={{ fontSize:'11px', fontWeight:600, padding:'2px 9px', borderRadius:'999px', border:'none', cursor:'pointer', flexShrink:0,
-              background: field.required ? 'rgba(239,68,68,0.15)' : 'rgba(255,255,255,0.07)',
-              color: field.required ? '#f87171' : 'var(--text-3)' }}>
-            {field.required ? 'Required' : 'Optional'}
+          {/* Expand for more options */}
+          <button
+            onClick={() => setOpen(o => !o)}
+            style={{ 
+              width: 30, height: 30, borderRadius: '8px', border: '1px solid var(--border)', 
+              background: open ? 'rgba(255,255,255,0.08)' : 'transparent', color: 'var(--text-2)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.2s'
+            }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.3s' }}>
+              <path d="m6 9 6 6 6-6"/>
+            </svg>
           </button>
-        )}
 
-        {/* Remove ANY field */}
-        {onRemove && (
-          <button onClick={onRemove} title="Remove" style={{ fontSize:'14px', background:'none', border:'none', cursor:'pointer', color:'var(--text-3)', padding:'0 2px', lineHeight:1, flexShrink:0 }}>✕</button>
-        )}
+          <div style={{ width: '1px', height: '20px', background: 'var(--border)' }} />
 
-        {/* Enabled toggle */}
-        <input type="checkbox" className="toggle" checked={field.enabled} onChange={() => onChange({ enabled: !field.enabled })} />
+          {/* Enabled toggle */}
+          <div style={{ display: 'flex', alignItems: 'center', scale: '0.9' }}>
+            <input type="checkbox" className="toggle" checked={field.enabled} onChange={() => onChange({ enabled: !field.enabled })} />
+          </div>
+
+          {onRemove && (
+            <button 
+              onClick={onRemove} 
+              style={{ 
+                width: 30, height: 30, borderRadius: '8px', border: 'none', background: 'transparent',
+                color: 'var(--text-3)', display: 'flex', alignItems: 'center', justifyContent: 'center', 
+                cursor: 'pointer', transition: 'all 0.2s' 
+              }}
+              onMouseEnter={e => e.currentTarget.style.color = 'var(--error)'}
+              onMouseLeave={e => e.currentTarget.style.color = 'var(--text-3)'}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Expanded options */}
       {open && field.enabled && (
-        <div style={{ padding:'10px 14px 14px', borderTop:'1px solid rgba(255,255,255,0.06)', display:'flex', flexDirection:'column', gap:'8px' }}>
+        <motion.div 
+          initial={{ height: 0, opacity: 0 }}
+          animate={{ height: 'auto', opacity: 1 }}
+          style={{ padding:'0 20px 20px', borderTop:'1px solid var(--border)', display:'flex', flexDirection:'column', gap:'16px', paddingTop: '20px' }}
+        >
 
-          {/* Session Helper (Quick populate) */}
-          {field.id === 'session_select' && onSessionCountChange && (
-            <div style={{ display:'flex', flexDirection:'column', gap:'6px', background:'rgba(124,58,237,0.08)', border:'1px solid rgba(124,58,237,0.2)', borderRadius:'8px', padding:'10px' }}>
-              <label className="input-label" style={{fontSize:'11px', color:'var(--accent-2)'}}>Quick Populate Sessions</label>
-              <div style={{ display:'flex', alignItems:'center', gap:'8px' }}>
-                <input type="number" min={1} max={50} value={sessionCount || 1}
-                   onChange={e => {
-                     const n = parseInt(e.target.value);
-                     if (!isNaN(n)) onSessionCountChange(n);
-                   }}
-                   style={{ width:'60px', height:'32px', padding:'0 8px', background:'var(--bg-2)', border:'1px solid var(--border)', borderRadius:'6px', color:'var(--text)', fontSize:'13px' }}
-                 />
-                 <span style={{ fontSize:'11px', color:'var(--text-3)' }}>Sessions to generate</span>
-               </div>
-               
-               {field.options && field.options.length > 0 && (
-                 <div style={{ marginTop:'4px', display:'flex', flexWrap:'wrap', gap:'4px' }}>
-                   {field.options.slice(0, 10).map((opt, i) => (
-                     <span key={i} style={{ fontSize:'10px', padding:'2px 6px', background:'rgba(124,58,237,0.12)', border:'1px solid rgba(124,58,237,0.2)', borderRadius:'4px', color:'var(--accent-2)' }}>{opt}</span>
-                   ))}
-                   {field.options.length > 10 && <span style={{ fontSize:'10px', color:'var(--text-3)' }}>+ {field.options.length - 10} more</span>}
-                 </div>
-               )}
-               <span style={{ fontSize:'11px', color:'var(--text-3)', opacity:0.7 }}>Changes apply immediately to the dropdown.</span>
-            </div>
-          )}
-
-          {/* Field type */}
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'8px' }}>
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'16px' }}>
             <div>
-              <label className="input-label" style={{fontSize:'11px'}}>Field Type</label>
+              <label className="input-label">Field Type</label>
               <select className="select" value={field.type}
-                onChange={e => onChange({ type: e.target.value as SessionFieldType, options: e.target.value === 'select' ? (field.options ?? ['Option 1']) : undefined })}
-                style={{ background:'var(--card)', color:'var(--text-1)', padding:'5px 8px', height:'32px', fontSize:'12px' }}>
+                onChange={e => onChange({ type: e.target.value as SessionFieldType, options: e.target.value === 'select' ? (field.options ?? ['Option 1']) : undefined })}>
                 {FIELD_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
               </select>
             </div>
             <div>
-              <label className="input-label" style={{fontSize:'11px'}}>Placeholder</label>
-              <input className="input" value={field.placeholder ?? ''} placeholder="Hint text"
-                onChange={e => onChange({ placeholder: e.target.value })}
-                style={{ padding:'5px 8px', height:'32px', fontSize:'12px' }} />
+              <label className="input-label">Placeholder</label>
+              <input className="input" value={field.placeholder ?? ''} placeholder="e.g. Enter your name"
+                onChange={e => onChange({ placeholder: e.target.value })} />
             </div>
           </div>
 
           <div>
-            <label className="input-label" style={{fontSize:'11px'}}>Help Text</label>
-            <input className="input" value={field.helpText ?? ''} placeholder="Shown below the field"
-              onChange={e => onChange({ helpText: e.target.value })}
-              style={{ fontSize:'12px', padding:'5px 8px', height:'32px' }} />
-          </div>
-
-          {/* Link fields */}
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'8px' }}>
-            <div>
-              <label className="input-label" style={{fontSize:'11px'}}>Link URL</label>
-              <input className="input" value={field.linkUrl ?? ''} placeholder="https://..."
-                onChange={e => onChange({ linkUrl: e.target.value })}
-                style={{ fontSize:'12px', padding:'5px 8px', height:'32px' }} />
-            </div>
-            <div>
-              <label className="input-label" style={{fontSize:'11px'}}>Link Label</label>
-              <input className="input" value={field.linkText ?? ''} placeholder="e.g. View Rules"
-                onChange={e => onChange({ linkText: e.target.value })}
-                style={{ fontSize:'12px', padding:'5px 8px', height:'32px' }} />
-            </div>
+            <label className="input-label">Help Text</label>
+            <input className="input" value={field.helpText ?? ''} placeholder="Helper instructions for the user"
+              onChange={e => onChange({ helpText: e.target.value })} />
           </div>
 
           {/* Select options */}
           {(field.type === 'select' || field.id === 'session_select') && (
             <div>
-              <label className="input-label" style={{fontSize:'11px'}}>Options (comma-separated)</label>
-              <input className="input"
+              <label className="input-label">Options (comma-separated)</label>
+              <textarea 
+                className="textarea"
+                rows={2}
                 value={field.options?.join(', ') ?? ''}
                 placeholder="Option A, Option B, Option C"
                 onChange={e => onChange({ options: e.target.value.split(',').map(o => o.trim()).filter(Boolean) })}
-                style={{ fontSize:'12px', padding:'5px 8px', height:'32px' }} />
+                style={{ fontSize:'13px', padding:'10px 12px', minHeight: '60px' }} 
+              />
             </div>
           )}
-
-
-        </div>
+        </motion.div>
       )}
     </div>
   );
 }
+
 
 // ── Custom field creator ─────────────────────────────────────────────
 interface NewFieldDraft {
@@ -340,13 +343,7 @@ export function FormBuilderTab({ config, onChange }: {
               onRemove={() => removeField(f.id)}
               sessionCount={f.id === 'session_select' ? config.sessionCount : undefined}
               onSessionCountChange={f.id === 'session_select' ? (n) => {
-                const fields = config.fields.map(field => {
-                  if (field.id === 'session_select') {
-                    return { ...field, options: Array.from({ length: n }, (_, i) => i === 0 ? `Walrus Session 2-Walrus Feedback` : `Session ${i + 1}`) };
-                  }
-                  return field;
-                });
-                onChange({ ...config, sessionCount: n, fields });
+                onChange({ ...config, sessionCount: n });
               } : undefined}
             />
           ))}
@@ -360,16 +357,6 @@ export function FormBuilderTab({ config, onChange }: {
           3. Publish Form
         </p>
 
-        {/* Live session preview */}
-        {config.fields.find(f => f.id === 'session_select')?.options && (
-          <div style={{ padding:'8px 12px', borderRadius:'8px', background:'rgba(124,58,237,0.08)', border:'1px solid rgba(124,58,237,0.2)', fontSize:'12px', color:'var(--text-2)' }}>
-            📋 Session dropdown will contain <strong style={{color:'var(--accent-2)'}}>{config.fields.find(f => f.id === 'session_select')?.options?.length}</strong> options:
-            {' '}<em style={{color:'var(--text-3)'}}>
-              {config.fields.find(f => f.id === 'session_select')?.options?.slice(0, 2).join(', ')}
-              {(config.fields.find(f => f.id === 'session_select')?.options?.length ?? 0) > 2 ? '...' : ''}
-            </em>
-          </div>
-        )}
 
         <p style={{ fontSize:'13px', color:'var(--text-2)' }}>
           Uploads the form config to Walrus and generates a shareable link.

@@ -5,8 +5,13 @@
 
 import type { WalrusUploadResponse } from '@/types/motion';
 
-export const WALRUS_AGGREGATOR = 'https://aggregator.walrus.space';
-export const WALRUS_PUBLISHER  = 'https://publisher.walrus.space';
+export const NETWORK = 'mainnet';
+export const WALRUS_AGGREGATOR = 'https://aggregator.mainnet.walrus.space';
+export const WALRUS_PUBLISHER  = 'https://publisher.mainnet.walrus.space';
+
+console.log("NETWORK:", NETWORK);
+console.log("AGGREGATOR:", WALRUS_AGGREGATOR);
+console.log("PUBLISHER:", WALRUS_PUBLISHER);
 
 function parseWalrusResponse(result: Record<string, unknown>): WalrusUploadResponse {
   if (result.newlyCreated) {
