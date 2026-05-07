@@ -159,7 +159,7 @@ export default function Home() {
     setStatus('submitting');
     try {
       const submission: Submission = {
-        id: subId, 
+        id: uid(), 
         formId: formBlobId, // Mandatory for Bug #1
         formBlobId, 
         data,
