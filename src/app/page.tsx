@@ -309,158 +309,212 @@ export default function Home() {
           {/* Hero Section Container */}
           <div style={{ 
             position: 'relative',
-            height: '100vh',
+            minHeight: '100vh',
             display: 'flex',
-            flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'center',
-            textAlign: 'center',
             overflow: 'hidden',
-            padding: '0 24px'
+            padding: '120px 24px 80px'
           }}>
-          {/* Animated Background Layers */}
-          <motion.div 
-            style={{
-              position: 'absolute',
-              width: '120%',
-              height: '120%',
-              background: 'radial-gradient(circle at 50% 50%, rgba(124,58,237,0.1) 0%, transparent 50%)',
-              filter: 'blur(80px)',
-              x: mousePos.x * -1,
-              y: mousePos.y * -1,
-              zIndex: 1
-            }}
-          />
-          <div style={{
-            position: 'absolute',
-            inset: 0,
-            background: 'radial-gradient(circle at 50% 50%, transparent 0%, var(--bg) 85%)',
-            zIndex: 2
-          }} />
-          
-          <motion.div 
-            initial={{ opacity: 0, y: 40 }} 
-            animate={{ opacity: 1, y: 0 }} 
-            transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
-            style={{ maxWidth: '1000px', zIndex: 10, position: 'relative' }}
-          >
+            {/* Animated Background Layers */}
             <motion.div 
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ duration: 1, delay: 0.2 }}
-              style={{ 
-                display: 'inline-flex', 
-                alignItems: 'center', 
-                gap: '8px', 
-                padding: '6px 16px', 
-                borderRadius: '999px', 
-                background: 'rgba(139, 92, 246, 0.1)', 
-                border: '1px solid rgba(139, 92, 246, 0.2)', 
-                marginBottom: '40px', 
-                backdropFilter: 'blur(10px)',
-                color: 'var(--accent-2)',
-                fontSize: '13px',
-                fontWeight: 700,
-                textTransform: 'uppercase',
-                letterSpacing: '0.1em'
+              style={{
+                position: 'absolute',
+                width: '120%',
+                height: '120%',
+                background: 'radial-gradient(circle at 50% 50%, rgba(124,58,237,0.15) 0%, transparent 60%)',
+                filter: 'blur(80px)',
+                x: mousePos.x * -0.5,
+                y: mousePos.y * -0.5,
+                zIndex: 1
               }}
-            >
-              <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--accent-2)', boxShadow: '0 0 12px var(--accent-2)' }} />
-              Native Walrus Infrastructure
-            </motion.div>
+            />
+            <div style={{
+              position: 'absolute',
+              inset: 0,
+              background: 'radial-gradient(circle at 50% 50%, transparent 0%, var(--bg) 90%)',
+              zIndex: 2
+            }} />
             
-            <h1 style={{ fontSize:'clamp(56px, 10vw, 110px)', fontWeight:900, letterSpacing:'-0.06em', lineHeight:0.9, marginBottom:'40px', color: '#fff' }}>
-              <motion.span 
-                initial={{ opacity: 0, filter: 'blur(10px)' }} 
-                animate={{ opacity: 1, filter: 'blur(0px)' }} 
-                transition={{ duration: 0.8, delay: 0.4 }}
-                style={{ display: 'block' }}
-              >
-                Forms owned by
-              </motion.span>
-              <motion.span 
-                initial={{ opacity: 0, x: -20 }} 
+            <div style={{ 
+              maxWidth: '1300px', 
+              width: '100%', 
+              zIndex: 10, 
+              position: 'relative',
+              display: 'flex',
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: '40px',
+              flexWrap: 'wrap',
+              justifyContent: 'center'
+            }}>
+              {/* Left Content */}
+              <motion.div 
+                initial={{ opacity: 0, x: -40 }} 
                 animate={{ opacity: 1, x: 0 }} 
-                transition={{ duration: 0.8, delay: 0.6 }}
-                style={{ background: 'linear-gradient(135deg, var(--accent-2) 0%, var(--cyan) 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', display: 'block' }}
+                transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
+                style={{ flex: '1 1 600px', textAlign: 'left' }}
               >
-                users, not platforms.
-              </motion.span>
-            </h1>
-            
-            <motion.p 
-              initial={{ opacity: 0 }} 
-              animate={{ opacity: 1 }} 
-              transition={{ duration: 1, delay: 0.8 }}
-              style={{ fontSize:'clamp(18px, 4vw, 22px)', color:'var(--text-2)', lineHeight:1.6, maxWidth:'700px', margin:'0 auto 64px', fontWeight: 500 }}
-            >
-              The first truly decentralized form ecosystem where every submission is an immutable asset on the Walrus storage protocol.
-            </motion.p>
-            
-            <motion.div 
-              initial={{ opacity: 0, y: 20 }} 
-              animate={{ opacity: 1, y: 0 }} 
-              transition={{ duration: 0.8, delay: 1 }}
-              style={{ display:'flex', gap:'24px', justifyContent:'center', flexWrap: 'wrap' }}
-            >
-              <a href="/admin" className="btn btn-primary btn-xl" style={{ textDecoration:'none', minWidth: '260px', borderRadius: '14px', fontSize: '18px', boxShadow: '0 20px 40px rgba(124,58,237,0.3)' }}>
-                Launch Dashboard
-              </a>
-              <a href="https://walrus.space" target="_blank" rel="noopener noreferrer" className="btn btn-secondary btn-xl" style={{ textDecoration:'none', minWidth: '260px', borderRadius: '14px', fontSize: '18px' }}>
-                Explore Protocol
-              </a>
-            </motion.div>
-          </motion.div>
-        </div>
+                <motion.div 
+                  initial={{ scale: 0.8, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ duration: 1, delay: 0.2 }}
+                  style={{ 
+                    display: 'inline-flex', 
+                    alignItems: 'center', 
+                    gap: '8px', 
+                    padding: '6px 16px', 
+                    borderRadius: '999px', 
+                    background: 'rgba(139, 92, 246, 0.1)', 
+                    border: '1px solid rgba(139, 92, 246, 0.2)', 
+                    marginBottom: '40px', 
+                    backdropFilter: 'blur(10px)',
+                    color: 'var(--accent-2)',
+                    fontSize: '13px',
+                    fontWeight: 700,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.1em'
+                  }}
+                >
+                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--accent-2)', boxShadow: '0 0 12px var(--accent-2)' }} />
+                  Native Walrus Infrastructure
+                </motion.div>
+                
+                <h1 style={{ fontSize:'clamp(48px, 8vw, 96px)', fontWeight:900, letterSpacing:'-0.05em', lineHeight:0.95, marginBottom:'32px', color: '#fff' }}>
+                  <motion.span 
+                    initial={{ opacity: 0, filter: 'blur(10px)' }} 
+                    animate={{ opacity: 1, filter: 'blur(0px)' }} 
+                    transition={{ duration: 0.8, delay: 0.4 }}
+                    style={{ display: 'block' }}
+                  >
+                    Forms owned by
+                  </motion.span>
+                  <motion.span 
+                    initial={{ opacity: 0, x: -20 }} 
+                    animate={{ opacity: 1, x: 0 }} 
+                    transition={{ duration: 0.8, delay: 0.6 }}
+                    style={{ background: 'linear-gradient(135deg, var(--accent-2) 0%, var(--cyan) 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', display: 'block' }}
+                  >
+                    users, not platforms.
+                  </motion.span>
+                </h1>
+                
+                <motion.p 
+                  initial={{ opacity: 0 }} 
+                  animate={{ opacity: 1 }} 
+                  transition={{ duration: 1, delay: 0.8 }}
+                  style={{ fontSize:'clamp(18px, 2vw, 20px)', color:'var(--text-2)', lineHeight:1.6, maxWidth:'600px', marginBottom:'48px', fontWeight: 500 }}
+                >
+                  The first truly decentralized form ecosystem where every submission is an immutable asset on the Walrus storage protocol.
+                </motion.p>
+                
+                <motion.div 
+                  initial={{ opacity: 0, y: 20 }} 
+                  animate={{ opacity: 1, y: 0 }} 
+                  transition={{ duration: 0.8, delay: 1 }}
+                  style={{ display:'flex', gap:'20px', flexWrap: 'wrap' }}
+                >
+                  <a href="/admin" className="btn btn-primary btn-xl" style={{ textDecoration:'none', padding: '18px 36px', borderRadius: '14px', fontSize: '18px', boxShadow: '0 20px 40px rgba(124,58,237,0.3)' }}>
+                    Launch Dashboard
+                  </a>
+                  <a href="https://walrus.space" target="_blank" rel="noopener noreferrer" className="btn btn-secondary btn-xl" style={{ textDecoration:'none', padding: '18px 36px', borderRadius: '14px', fontSize: '18px' }}>
+                    Explore Protocol
+                  </a>
+                </motion.div>
+              </motion.div>
+
+              {/* Right Mascot Image */}
+              <motion.div
+                initial={{ opacity: 0, scale: 0.8, x: 40 }}
+                animate={{ opacity: 1, scale: 1, x: 0 }}
+                transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1], delay: 0.5 }}
+                style={{ flex: '1 1 400px', display: 'flex', justifyContent: 'center', position: 'relative' }}
+              >
+                <div style={{ position: 'absolute', inset: '-10%', background: 'radial-gradient(circle, rgba(124,58,237,0.15) 0%, transparent 70%)', zIndex: -1, opacity: 0.6 }} />
+                <motion.img 
+                  src="/walrus-2.png" 
+                  alt="Walrus Mascot"
+                  style={{ width: '100%', maxWidth: '480px', height: 'auto', filter: 'drop-shadow(0 30px 60px rgba(0,0,0,0.6))' }}
+                  animate={{ 
+                    y: [0, -25, 0],
+                    rotate: [0, 2, 0, -2, 0]
+                  }}
+                  transition={{ 
+                    duration: 5, 
+                    repeat: Infinity, 
+                    ease: "easeInOut" 
+                  }}
+                />
+              </motion.div>
+            </div>
+          </div>
 
 
           {/* ── PART 1: MOTION EXPLANATION ────────────────────────────────── */}
           <section style={{ width: '100%', maxWidth: '1200px', margin: '160px auto 0', padding: '0 24px', position: 'relative' }}>
             <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(circle at 50% 50%, var(--accent-soft), transparent 70%)', opacity: 0.5, filter: 'blur(60px)', zIndex: 0 }} />
             
-            <motion.div
-              initial={{ opacity: 0, y: 40 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.8 }}
-              style={{ position: 'relative', zIndex: 2 }}
-            >
-              <h2 style={{ fontSize: 'clamp(32px, 6vw, 56px)', fontWeight: 900, letterSpacing: '-0.04em', marginBottom: '24px' }}>
-                Forms owned by users,<br/>
-                <span style={{ color: 'var(--accent-2)' }}>not platforms.</span>
-              </h2>
-              <p style={{ fontSize: '20px', color: 'var(--text-2)', maxWidth: '700px', margin: '0 auto 48px', lineHeight: 1.6 }}>
-                Motion is a decentralized form ecosystem built on Walrus and Sui where submissions, media, and workflows live fully on-chain. No centralized database. No hidden control. Full ownership by default.
-              </p>
-              
-              <div style={{ display: 'flex', gap: '40px', justifyContent: 'center', flexWrap: 'wrap' }}>
-                {['Secure', 'Permanent', 'Composable', 'Censorship-Resistant'].map((item, i) => (
-                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-3)', fontSize: '14px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
-                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--accent-2)' }} />
-                    {item}
-                  </div>
-                ))}
-              </div>
-            </motion.div>
+            <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '80px', flexWrap: 'wrap', position: 'relative', zIndex: 2 }}>
+              <motion.div
+                initial={{ opacity: 0, x: -40 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.8 }}
+                style={{ flex: '1 1 600px' }}
+              >
+                <h2 style={{ fontSize: 'clamp(32px, 6vw, 56px)', fontWeight: 900, letterSpacing: '-0.04em', marginBottom: '24px' }}>
+                  Forms owned by users,<br/>
+                  <span style={{ color: 'var(--accent-2)' }}>not platforms.</span>
+                </h2>
+                <p style={{ fontSize: '20px', color: 'var(--text-2)', lineHeight: 1.6, maxWidth: '540px', marginBottom: '40px' }}>
+                  Motion is a decentralized form ecosystem built on Walrus and Sui where submissions, media, and workflows live fully on-chain. No centralized database. No hidden control. Full ownership by default.
+                </p>
+                
+                <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap' }}>
+                  {['Secure', 'Permanent', 'Composable', 'Censorship-Resistant'].map((item, i) => (
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-3)', fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                      <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent-2)' }} />
+                      {item}
+                    </div>
+                  ))}
+                </div>
+              </motion.div>
+
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9, x: 40 }}
+                whileInView={{ opacity: 1, scale: 1, x: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 1, delay: 0.2 }}
+                style={{ flex: '1 1 300px', display: 'flex', justifyContent: 'center' }}
+              >
+                <img src="/walrus-1.png" alt="Walrus" style={{ width: '100%', maxWidth: '400px', height: 'auto', filter: 'drop-shadow(0 20px 40px rgba(0,0,0,0.4))' }} />
+              </motion.div>
+            </div>
           </section>
 
           {/* ── PART 2: FLOW SECTION ──────────────────────────────────────── */}
           <section style={{ width: '100%', maxWidth: '1000px', margin: '200px auto 0', padding: '0 24px' }}>
             <h3 style={{ fontSize: '14px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.2em', color: 'var(--accent-2)', marginBottom: '64px' }}>How it works</h3>
             
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '32px', position: 'relative' }}>
+            <div style={{ 
+              display: 'grid', 
+              gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', 
+              gap: '24px', 
+              position: 'relative' 
+            }}>
               {[
                 { title: 'Connect', desc: 'Authenticate instantly using Sui wallets.', icon: '🔑' },
-                { title: 'Build', desc: 'Create forms, surveys, and applications with flexible customization.', icon: '🛠️' },
-                { title: 'Store', desc: 'All submissions and media are stored permanently on Walrus.', icon: '📦' },
-                { title: 'Analyze', desc: 'Review submissions, manage admins, and export insights seamlessly.', icon: '📊' }
+                { title: 'Build', desc: 'Create forms and surveys with flexible customization.', icon: '🛠️' },
+                { title: 'Store', desc: 'All data and media are stored permanently on Walrus.', icon: '📦' },
+                { title: 'Analyze', desc: 'Manage admins and export insights seamlessly.', icon: '📊' }
               ].map((step, i) => (
                 <motion.div
                   key={i}
-                  initial={{ opacity: 0, x: -20 }}
-                  whileInView={{ opacity: 1, x: 0 }}
+                  initial={{ opacity: 0, y: 30 }}
+                  whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
-                  transition={{ delay: i * 0.2, duration: 0.6 }}
+                  transition={{ delay: i * 0.15, duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+                  whileHover={{ y: -10, transition: { duration: 0.2 } }}
                   style={{ 
                     padding: '32px', 
                     borderRadius: '24px', 
@@ -468,27 +522,34 @@ export default function Home() {
                     border: '1px solid var(--border)',
                     textAlign: 'left',
                     position: 'relative',
-                    backdropFilter: 'blur(10px)',
-                    WebkitBackdropFilter: 'blur(10px)'
+                    backdropFilter: 'blur(12px)',
+                    WebkitBackdropFilter: 'blur(12px)',
+                    transition: 'border-color 0.3s ease, background 0.3s ease'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = 'rgba(124,58,237,0.4)';
+                    e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = 'var(--border)';
+                    e.currentTarget.style.background = 'rgba(255,255,255,0.03)';
                   }}
                 >
-                  <div style={{ fontSize: '32px', marginBottom: '24px' }}>{step.icon}</div>
-                  <h4 style={{ fontSize: '20px', fontWeight: 800, marginBottom: '12px' }}>{step.title}</h4>
-                  <p style={{ fontSize: '14px', color: 'var(--text-2)', lineHeight: 1.5 }}>{step.desc}</p>
+                  <div style={{ fontSize: '36px', marginBottom: '24px', filter: 'drop-shadow(0 10px 20px rgba(0,0,0,0.3))' }}>{step.icon}</div>
+                  <h4 style={{ fontSize: '22px', fontWeight: 900, marginBottom: '12px', color: '#fff' }}>{step.title}</h4>
+                  <p style={{ fontSize: '15px', color: 'var(--text-3)', lineHeight: 1.6 }}>{step.desc}</p>
                   
                   {i < 3 && (
-                    <div style={{ 
+                    <div className="flow-arrow" style={{ 
                       position: 'absolute', 
-                      right: '-24px', 
+                      right: '-16px', 
                       top: '50%', 
                       transform: 'translateY(-50%)', 
                       zIndex: 10,
-                      opacity: 0.5,
-                      animation: 'arrow-flow 2s infinite ease-in-out',
-                      animationDelay: `${i * 0.5}s`,
-                      fontSize: '24px',
+                      opacity: 0.3,
+                      fontSize: '20px',
                       color: 'var(--accent-2)',
-                      display: 'block' // Ensure it shows for grid
+                      pointerEvents: 'none'
                     }}>
                       →
                     </div>
@@ -579,8 +640,8 @@ export default function Home() {
 
             <div style={{ 
               display: 'grid', 
-              gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', 
-              gap: '24px',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', 
+              gap: '32px',
               justifyContent: 'center'
             }}>
               {[
@@ -611,68 +672,74 @@ export default function Home() {
                     target="_blank"
                     rel="noopener noreferrer"
                     style={{
-                      padding: '12px 20px',
+                      padding: '14px 24px',
                       background: 'rgba(255,255,255,0.03)',
                       border: '1px solid var(--border)',
-                      borderRadius: '14px',
+                      borderRadius: '16px',
                       color: 'var(--text-1)',
-                      fontSize: '14px',
+                      fontSize: '15px',
                       fontWeight: 600,
                       textDecoration: 'none',
-                      transition: 'all 0.2s ease',
+                      transition: 'all 0.25s cubic-bezier(0.2, 0, 0, 1)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'space-between',
-                      gap: '8px'
+                      gap: '12px'
                     }}
                     onMouseEnter={(e) => {
                       e.currentTarget.style.background = 'rgba(255,255,255,0.08)';
                       e.currentTarget.style.borderColor = 'var(--accent-2)';
-                      e.currentTarget.style.transform = 'translateX(4px)';
+                      e.currentTarget.style.transform = 'translateX(6px)';
+                      e.currentTarget.style.boxShadow = '0 10px 20px rgba(0,0,0,0.2)';
                     }}
                     onMouseLeave={(e) => {
                       e.currentTarget.style.background = 'rgba(255,255,255,0.03)';
                       e.currentTarget.style.borderColor = 'var(--border)';
                       e.currentTarget.style.transform = 'translateX(0)';
+                      e.currentTarget.style.boxShadow = 'none';
                     }}
                   >
                     {label}
-                    <span style={{ opacity: 0.5, fontSize: '12px' }}>↗</span>
+                    <span style={{ opacity: 0.7, fontSize: '14px', transition: 'transform 0.25s' }}>↗</span>
                   </a>
                 );
 
                 return (
                   <motion.div 
                     key={idx}
-                    initial={{ opacity: 0, y: 20 }}
+                    initial={{ opacity: 0, y: 30 }}
                     whileInView={{ opacity: 1, y: 0 }}
-                    whileHover={{ y: -8, borderColor: 'rgba(124,58,237,0.3)', boxShadow: '0 30px 60px rgba(0,0,0,0.5)' }}
+                    whileHover={{ y: -10, borderColor: 'rgba(124,58,237,0.4)', boxShadow: '0 40px 80px rgba(0,0,0,0.6)' }}
                     viewport={{ once: true }}
+                    transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
                     style={{ 
-                      padding: '40px', 
+                      padding: '48px', 
                       background: 'rgba(255,255,255,0.02)',
-                      backdropFilter: 'blur(16px)',
+                      backdropFilter: 'blur(24px)',
                       border: '1px solid var(--border)',
-                      borderRadius: '32px',
+                      borderRadius: '40px',
                       display: 'flex',
-                      gap: '48px',
+                      gap: '56px',
                       alignItems: 'center',
-                      transition: 'all 0.3s cubic-bezier(0.2, 0, 0, 1)'
+                      transition: 'all 0.4s cubic-bezier(0.2, 0, 0, 1)',
+                      position: 'relative',
+                      overflow: 'hidden'
                     }}
                   >
-                    <div style={{ flex: '0 0 auto', textAlign: 'center' }}>
+                    <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(circle at 0% 0%, rgba(124,58,237,0.05), transparent 50%)', pointerEvents: 'none' }} />
+                    <div style={{ flex: '0 0 auto', textAlign: 'center', position: 'relative', zIndex: 2 }}>
                       <div style={{ 
-                        width: '84px', height: '84px', borderRadius: '24px', background: 'rgba(124,58,237,0.05)', 
-                        display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '40px',
-                        border: '1px solid rgba(124,58,237,0.15)',
-                        boxShadow: '0 12px 24px rgba(0,0,0,0.2)',
-                        marginBottom: '16px'
+                        width: '100px', height: '100px', borderRadius: '28px', background: 'rgba(124,58,237,0.08)', 
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '48px',
+                        border: '1px solid rgba(124,58,237,0.2)',
+                        boxShadow: '0 20px 40px rgba(0,0,0,0.3)',
+                        marginBottom: '24px'
                       }}>{section.icon}</div>
-                      <h3 style={{ fontSize: '18px', fontWeight: 800, color: '#fff', margin: 0 }}>{section.title}</h3>
-                      <p style={{ fontSize: '12px', color: 'var(--text-3)', marginTop: '4px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{section.tag}</p>
+                      <h3 style={{ fontSize: '22px', fontWeight: 900, color: '#fff', margin: 0, letterSpacing: '-0.02em' }}>{section.title}</h3>
+                      <p style={{ fontSize: '13px', color: 'var(--accent-2)', marginTop: '8px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em' }}>{section.tag}</p>
                     </div>
                     
-                    <div style={{ flex: 1, display: 'grid', gap: '10px' }}>
+                    <div style={{ flex: 1, display: 'grid', gap: '12px', position: 'relative', zIndex: 2 }}>
                       {section.links.map((link, lidx) => (
                         <ReferenceLink key={lidx} href={link.url} label={link.label} />
                       ))}

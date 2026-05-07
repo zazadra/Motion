@@ -329,6 +329,7 @@ body::after {
 .anim-fade-in  { animation: fadeIn 0.25s ease both; }
 .anim-spin     { animation: spin 0.75s linear infinite; }
 .anim-pulse    { animation: pulseDot 2s ease-in-out infinite; }
+.flow-arrow { animation: arrow-flow 2s infinite ease-in-out; }
 .delay-1 { animation-delay: 0.08s; }
 .delay-2 { animation-delay: 0.16s; }
 .delay-3 { animation-delay: 0.24s; }
