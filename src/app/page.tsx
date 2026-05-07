@@ -169,37 +169,27 @@ function FloatingWalrus({ mousePos }: { mousePos: { x: number, y: number } }) {
   const smoothX = useSpring(mousePos.x, { damping: 20, stiffness: 100 });
   const smoothY = useSpring(mousePos.y, { damping: 20, stiffness: 100 });
 
-  // Helper for combining transforms
   const combine = (base: any, wiggle: any) => useTransform([base, wiggle], ([b, w]) => (b as number) + (w as number));
 
-  // 1. Bottom Right (0.12 - 0.28)
-  const peek1Opacity = useTransform(scrollYProgress, [0.12, 0.15, 0.25, 0.28], [0, 1, 1, 0]);
-  const peek1YBase = useTransform(scrollYProgress, [0.12, 0.15, 0.25, 0.28], [100, 0, 0, 100]);
-  const peek1XWiggle = useTransform(smoothX, [-500, 500], [-10, 10]);
-  const peek1YWiggle = useTransform(smoothY, [-500, 500], [-5, 5]);
-
-  // 2. Left Side (0.42 - 0.58) - Fixed
-  const peek2Opacity = useTransform(scrollYProgress, [0.42, 0.45, 0.55, 0.58], [0, 1, 1, 0]);
-  const peek2XBase = useTransform(scrollYProgress, [0.42, 0.45, 0.55, 0.58], [-150, 0, 0, -150]);
-  const peek2XWiggle = useTransform(smoothX, [-500, 500], [-5, 5]);
-  const peek2YWiggle = useTransform(smoothY, [-500, 500], [-10, 10]);
-
-  // 3. Bottom Left (0.72 - 0.88)
-  const peek3Opacity = useTransform(scrollYProgress, [0.72, 0.75, 0.85, 0.88], [0, 1, 1, 0]);
-  const peek3YBase = useTransform(scrollYProgress, [0.72, 0.75, 0.85, 0.88], [100, 0, 0, 100]);
-  const peek3XWiggle = useTransform(smoothX, [-500, 500], [-10, 10]);
-
-  // 4. Right Side (0.30 - 0.40) - NEW
-  const peek4Opacity = useTransform(scrollYProgress, [0.28, 0.31, 0.38, 0.41], [0, 1, 1, 0]);
-  const peek4XBase = useTransform(scrollYProgress, [0.28, 0.31, 0.38, 0.41], [150, 0, 0, 150]);
+  // 1. Bottom Right (0.12 - 0.30)
+  const peek1Opacity = useTransform(scrollYProgress, [0.12, 0.15, 0.27, 0.30], [0, 1, 1, 0]);
+  const peek1YBase = useTransform(scrollYProgress, [0.12, 0.15, 0.27, 0.30], [100, 0, 0, 100]);
   
-  // 5. Top Right (0.60 - 0.70) - NEW
-  const peek5Opacity = useTransform(scrollYProgress, [0.58, 0.61, 0.68, 0.71], [0, 1, 1, 0]);
-  const peek5YBase = useTransform(scrollYProgress, [0.58, 0.61, 0.68, 0.71], [-150, 0, 0, -150]);
+  // 4. Right Side (0.30 - 0.48) - Tilted
+  const peek4Opacity = useTransform(scrollYProgress, [0.30, 0.33, 0.45, 0.48], [0, 1, 1, 0]);
+  const peek4XBase = useTransform(scrollYProgress, [0.30, 0.33, 0.45, 0.48], [150, 0, 0, 150]);
+  
+  // 2. Left Side (0.50 - 0.68) - Tilted
+  const peek2Opacity = useTransform(scrollYProgress, [0.50, 0.53, 0.65, 0.68], [0, 1, 1, 0]);
+  const peek2XBase = useTransform(scrollYProgress, [0.50, 0.53, 0.65, 0.68], [-150, 0, 0, -150]);
 
-  // 6. Center Bottom (0.88 - 0.98) - NEW
-  const peek6Opacity = useTransform(scrollYProgress, [0.88, 0.91, 0.96, 0.99], [0, 1, 1, 0]);
-  const peek6YBase = useTransform(scrollYProgress, [0.88, 0.91, 0.96, 0.99], [150, 0, 0, 150]);
+  // 5. Top Right (0.70 - 0.88)
+  const peek5Opacity = useTransform(scrollYProgress, [0.70, 0.73, 0.85, 0.88], [0, 1, 1, 0]);
+  const peek5YBase = useTransform(scrollYProgress, [0.70, 0.73, 0.85, 0.88], [-150, 0, 0, -150]);
+
+  // 3. Bottom Left (0.88 - 0.99)
+  const peek3Opacity = useTransform(scrollYProgress, [0.88, 0.91, 0.96, 0.99], [0, 1, 1, 0]);
+  const peek3YBase = useTransform(scrollYProgress, [0.88, 0.91, 0.96, 0.99], [100, 0, 0, 100]);
 
   return (
     <>
@@ -207,51 +197,21 @@ function FloatingWalrus({ mousePos }: { mousePos: { x: number, y: number } }) {
       <motion.div
         style={{
           position: 'fixed', bottom: '-20px', right: '5%', width: '180px', zIndex: 50,
-          opacity: peek1Opacity, y: combine(peek1YBase, peek1YWiggle), x: peek1XWiggle,
+          opacity: peek1Opacity, y: combine(peek1YBase, useTransform(smoothY, [-500, 500], [-5, 5])), x: useTransform(smoothX, [-500, 500], [-10, 10]),
           pointerEvents: 'none'
         }}
       >
         <motion.img 
           src="/logo.png" alt="Walrus Peek" animate={{ scaleY: [1, 1, 0.1, 1, 1] }}
           transition={{ duration: 0.2, repeat: Infinity, repeatDelay: 4 }}
-          style={{ width: '100%', height: 'auto', transform: 'rotate(-10deg)', filter: 'drop-shadow(0 0 30px rgba(124,58,237,0.4))' }} 
+          style={{ width: '100%', height: 'auto', transform: 'rotate(-20deg)', filter: 'drop-shadow(0 0 30px rgba(124,58,237,0.4))' }} 
         />
       </motion.div>
 
-      {/* Peek 2: Left Side */}
+      {/* Peek 4: Right Side (Tilted) */}
       <motion.div
         style={{
-          position: 'fixed', top: '40%', left: '-20px', width: '150px', zIndex: 50,
-          opacity: peek2Opacity, x: combine(peek2XBase, peek2XWiggle), y: peek2YWiggle,
-          pointerEvents: 'none'
-        }}
-      >
-        <motion.img 
-          src="/walrus-1.png" alt="Walrus Peek" animate={{ scaleY: [1, 1, 0.1, 1, 1] }}
-          transition={{ duration: 0.2, repeat: Infinity, repeatDelay: 5 }}
-          style={{ width: '100%', height: 'auto', transform: 'rotate(90deg)', filter: 'drop-shadow(0 0 30px rgba(124,58,237,0.4))' }} 
-        />
-      </motion.div>
-
-      {/* Peek 3: Bottom Left */}
-      <motion.div
-        style={{
-          position: 'fixed', bottom: '-30px', left: '10%', width: '200px', zIndex: 50,
-          opacity: peek3Opacity, y: combine(peek3YBase, useTransform(smoothY, [-500, 500], [-5, 5])), x: peek3XWiggle,
-          pointerEvents: 'none'
-        }}
-      >
-        <motion.img 
-          src="/walrus-2.png" alt="Walrus Peek" animate={{ scaleY: [1, 1, 0.1, 1, 1] }}
-          transition={{ duration: 0.2, repeat: Infinity, repeatDelay: 6 }}
-          style={{ width: '100%', height: 'auto', transform: 'rotate(15deg)', filter: 'drop-shadow(0 0 40px rgba(124,58,237,0.5))' }} 
-        />
-      </motion.div>
-
-      {/* Peek 4: Right Side */}
-      <motion.div
-        style={{
-          position: 'fixed', top: '25%', right: '-30px', width: '140px', zIndex: 50,
+          position: 'fixed', top: '30%', right: '-30px', width: '140px', zIndex: 50,
           opacity: peek4Opacity, x: combine(peek4XBase, useTransform(smoothX, [-500, 500], [-5, 5])), y: useTransform(smoothY, [-500, 500], [-10, 10]),
           pointerEvents: 'none'
         }}
@@ -259,7 +219,22 @@ function FloatingWalrus({ mousePos }: { mousePos: { x: number, y: number } }) {
         <motion.img 
           src="/logo.png" alt="Walrus Peek" animate={{ scaleY: [1, 1, 0.1, 1, 1] }}
           transition={{ duration: 0.2, repeat: Infinity, repeatDelay: 3.5 }}
-          style={{ width: '100%', height: 'auto', transform: 'rotate(-90deg)', filter: 'drop-shadow(0 0 30px rgba(124,58,237,0.3))' }} 
+          style={{ width: '100%', height: 'auto', transform: 'rotate(-110deg)', filter: 'drop-shadow(0 0 30px rgba(124,58,237,0.3))' }} 
+        />
+      </motion.div>
+
+      {/* Peek 2: Left Side (Tilted) */}
+      <motion.div
+        style={{
+          position: 'fixed', top: '45%', left: '-20px', width: '150px', zIndex: 50,
+          opacity: peek2Opacity, x: combine(peek2XBase, useTransform(smoothX, [-500, 500], [-5, 5])), y: useTransform(smoothY, [-500, 500], [-10, 10]),
+          pointerEvents: 'none'
+        }}
+      >
+        <motion.img 
+          src="/walrus-1.png" alt="Walrus Peek" animate={{ scaleY: [1, 1, 0.1, 1, 1] }}
+          transition={{ duration: 0.2, repeat: Infinity, repeatDelay: 5 }}
+          style={{ width: '100%', height: 'auto', transform: 'rotate(110deg)', filter: 'drop-shadow(0 0 30px rgba(124,58,237,0.4))' }} 
         />
       </motion.div>
 
@@ -274,24 +249,27 @@ function FloatingWalrus({ mousePos }: { mousePos: { x: number, y: number } }) {
         <motion.img 
           src="/walrus-1.png" alt="Walrus Peek" animate={{ scaleY: [1, 1, 0.1, 1, 1] }}
           transition={{ duration: 0.2, repeat: Infinity, repeatDelay: 4.5 }}
-          style={{ width: '100%', height: 'auto', transform: 'rotate(180deg)', filter: 'drop-shadow(0 0 30px rgba(124,58,237,0.3))' }} 
+          style={{ width: '100%', height: 'auto', transform: 'rotate(160deg)', filter: 'drop-shadow(0 0 30px rgba(124,58,237,0.3))' }} 
         />
       </motion.div>
 
-      {/* Peek 6: Center Bottom */}
+      {/* Peek 3: Bottom Left */}
       <motion.div
         style={{
-          position: 'fixed', bottom: '-50px', left: '45%', width: '220px', zIndex: 50,
-          opacity: peek6Opacity, y: combine(peek6YBase, useTransform(smoothY, [-500, 500], [-5, 5])), x: useTransform(smoothX, [-500, 500], [-10, 10]),
+          position: 'fixed', bottom: '-30px', left: '10%', width: '200px', zIndex: 50,
+          opacity: peek3Opacity, y: combine(peek3YBase, useTransform(smoothY, [-500, 500], [-5, 5])), x: useTransform(smoothX, [-500, 500], [-10, 10]),
           pointerEvents: 'none'
         }}
       >
         <motion.img 
           src="/walrus-2.png" alt="Walrus Peek" animate={{ scaleY: [1, 1, 0.1, 1, 1] }}
-          transition={{ duration: 0.2, repeat: Infinity, repeatDelay: 5.5 }}
-          style={{ width: '100%', height: 'auto', filter: 'drop-shadow(0 0 50px rgba(124,58,237,0.4))' }} 
+          transition={{ duration: 0.2, repeat: Infinity, repeatDelay: 6 }}
+          style={{ width: '100%', height: 'auto', transform: 'rotate(25deg)', filter: 'drop-shadow(0 0 40px rgba(124,58,237,0.5))' }} 
         />
       </motion.div>
+    </>
+  );
+}
     </>
   );
 }
