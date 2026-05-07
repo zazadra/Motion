@@ -432,7 +432,7 @@ export default function Home() {
               >
                 <div style={{ position: 'absolute', inset: '-10%', background: 'radial-gradient(circle, rgba(124,58,237,0.15) 0%, transparent 70%)', zIndex: -1, opacity: 0.6 }} />
                 <motion.img 
-                  src="/walrus-2.png" 
+                  src="/walrus-2.jpg" 
                   alt="Walrus Mascot"
                   style={{ width: '100%', maxWidth: '480px', height: 'auto', filter: 'drop-shadow(0 30px 60px rgba(0,0,0,0.6))' }}
                   animate={{ 
@@ -487,7 +487,7 @@ export default function Home() {
                 transition={{ duration: 1, delay: 0.2 }}
                 style={{ flex: '1 1 300px', display: 'flex', justifyContent: 'center' }}
               >
-                <img src="/walrus-1.png" alt="Walrus" style={{ width: '100%', maxWidth: '400px', height: 'auto', filter: 'drop-shadow(0 20px 40px rgba(0,0,0,0.4))' }} />
+                <img src="/walrus-1.jpg" alt="Walrus" style={{ width: '100%', maxWidth: '400px', height: 'auto', filter: 'drop-shadow(0 20px 40px rgba(0,0,0,0.4))' }} />
               </motion.div>
             </div>
           </section>
