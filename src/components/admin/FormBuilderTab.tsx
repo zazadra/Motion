@@ -86,19 +86,25 @@ function FieldEditor({ field, onChange, onRemove, sessionCount, onSessionCountCh
       {open && field.enabled && (
         <div style={{ padding:'10px 14px 14px', borderTop:'1px solid rgba(255,255,255,0.06)', display:'flex', flexDirection:'column', gap:'8px' }}>
 
-          {/* Session Count Helper (Specific for session_select) */}
+          {/* Session Helper (Quick populate) */}
           {field.id === 'session_select' && onSessionCountChange && (
             <div style={{ display:'flex', flexDirection:'column', gap:'6px', background:'rgba(124,58,237,0.08)', border:'1px solid rgba(124,58,237,0.2)', borderRadius:'8px', padding:'10px' }}>
-              <label className="input-label" style={{fontSize:'11px', color:'var(--accent-2)'}}>Quick Set: Number of Sessions</label>
+              <label className="input-label" style={{fontSize:'11px', color:'var(--accent-2)'}}>Quick Populate Sessions</label>
               <div style={{ display:'flex', alignItems:'center', gap:'8px' }}>
-                <button onClick={() => onSessionCountChange(Math.max(1, (sessionCount ?? 1) - 1))}
-                  className="btn btn-ghost btn-sm" style={{ border:'1px solid rgba(124,58,237,0.3)', color:'var(--accent-2)' }}>−</button>
-                <input type="number" min={1} max={50} value={sessionCount ?? 1}
-                  onChange={e => onSessionCountChange(Math.max(1, Math.min(50, +e.target.value)))}
+                <input type="number" min={1} max={50} defaultValue={sessionCount || 1}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') {
+                      const n = parseInt((e.target as HTMLInputElement).value);
+                      if (!isNaN(n)) onSessionCountChange(n);
+                    }
+                  }}
                   style={{ width:'60px', textAlign:'center', padding:'4px', fontSize:'14px', fontWeight:700, borderRadius:'6px', border:'1px solid rgba(124,58,237,0.3)', background:'rgba(0,0,0,0.3)', color:'var(--accent-2)' }} />
-                <button onClick={() => onSessionCountChange(Math.min(50, (sessionCount ?? 1) + 1))}
-                  className="btn btn-ghost btn-sm" style={{ border:'1px solid rgba(124,58,237,0.3)', color:'var(--accent-2)' }}>+</button>
-                <span style={{ fontSize:'12px', color:'var(--text-3)' }}>Auto-generates "Session 1", "Session 2", etc.</span>
+                <button onClick={(e) => {
+                  const input = (e.currentTarget.previousSibling as HTMLInputElement);
+                  const n = parseInt(input.value);
+                  if (!isNaN(n)) onSessionCountChange(n);
+                }} className="btn btn-primary btn-sm">Set</button>
+                <span style={{ fontSize:'11px', color:'var(--text-3)' }}>Enter number & click Set to generate Session 1, 2...</span>
               </div>
             </div>
           )}
@@ -156,21 +162,7 @@ function FieldEditor({ field, onChange, onRemove, sessionCount, onSessionCountCh
             </div>
           )}
 
-          {/* Session count inline — only for session_select field */}
-          {field.id === 'session_select' && onSessionCountChange && (
-            <div style={{ padding:'10px 12px', borderRadius:'8px', background:'rgba(124,58,237,0.08)', border:'1px solid rgba(124,58,237,0.2)', display:'flex', alignItems:'center', gap:'12px', flexWrap:'wrap' }}>
-              <span style={{ fontSize:'12px', color:'var(--accent-2)', fontWeight:600 }}>Session Count</span>
-              <div style={{ display:'flex', alignItems:'center', gap:'8px', flex:1 }}>
-                <input type="number" className="input" min={1} max={50} value={sessionCount ?? 1}
-                  onChange={e => onSessionCountChange(Math.max(1, +e.target.value))}
-                  style={{ width:'80px', padding:'4px 8px', height:'30px', fontSize:'13px' }} />
-                <span style={{ fontSize:'12px', color:'var(--text-3)' }}>→ generates "Session 1" to "Session {sessionCount}"</span>
-              </div>
-              <p style={{ fontSize:'11px', color:'var(--text-3)', width:'100%', marginTop:'2px' }}>
-                Overrides manual options above. The dropdown will auto-populate with this many sessions on publish.
-              </p>
-            </div>
-          )}
+
         </div>
       )}
     </div>
@@ -362,11 +354,12 @@ export function FormBuilderTab({ config, onChange }: {
         </p>
 
         {/* Live session preview */}
-        {config.sessionCount > 0 && (
+        {config.fields.find(f => f.id === 'session_select')?.options && (
           <div style={{ padding:'8px 12px', borderRadius:'8px', background:'rgba(124,58,237,0.08)', border:'1px solid rgba(124,58,237,0.2)', fontSize:'12px', color:'var(--text-2)' }}>
-            📋 Session dropdown will contain <strong style={{color:'var(--accent-2)'}}>{config.sessionCount}</strong> options:
+            📋 Session dropdown will contain <strong style={{color:'var(--accent-2)'}}>{config.fields.find(f => f.id === 'session_select')?.options?.length}</strong> options:
             {' '}<em style={{color:'var(--text-3)'}}>
-              Session 1{config.sessionCount > 1 ? ` → Session ${config.sessionCount}` : ''}
+              {config.fields.find(f => f.id === 'session_select')?.options?.slice(0, 2).join(', ')}
+              {(config.fields.find(f => f.id === 'session_select')?.options?.length ?? 0) > 2 ? '...' : ''}
             </em>
           </div>
         )}

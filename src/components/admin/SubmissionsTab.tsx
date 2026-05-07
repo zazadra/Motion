@@ -12,24 +12,37 @@ const STATUS_COLORS: Record<SubmissionStatus, string> = {
 
 function exportCSV(subs: Submission[]) {
   if (!subs.length) return;
-  const keys = [...new Set(subs.flatMap(s => Object.keys(s.data)))];
-  const headers = ['ID', 'Time', 'Submitter', 'Status', ...keys].map(h => `"${h.replace(/"/g, '""')}"`);
-  const rows = subs.map(s => [
-    `"${s.id}"`,
-    `"${new Date(s.timestamp).toISOString()}"`,
-    `"${s.submitterAddress ?? ''}"`,
-    `"${s.status}"`,
-    ...keys.map(k => {
-      const v = s.data[k];
-      const str = Array.isArray(v) ? v.join(', ') : String(v ?? '');
-      return `"${str.replace(/"/g, '""')}"`;
-    })
-  ]);
-  const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' }));
-  a.download = `submissions-${Date.now()}.csv`;
-  a.click();
+  // Get all unique data keys
+  const dataKeys = [...new Set(subs.flatMap(s => Object.keys(s.data)))];
+  
+  // Create headers
+  const headers = ['Submission ID', 'Timestamp', 'Submitter Address', 'Status', ...dataKeys];
+  
+  // Helper to escape CSV values
+  const escape = (val: any) => {
+    const str = Array.isArray(val) ? val.join('; ') : String(val ?? '');
+    return `"${str.replace(/"/g, '""')}"`;
+  };
+
+  const csvRows = [
+    headers.map(h => `"${h}"`).join(','), // header row
+    ...subs.map(s => [
+      `"${s.id}"`,
+      `"${new Date(s.timestamp).toISOString()}"`,
+      `"${s.submitterAddress || ''}"`,
+      `"${s.status}"`,
+      ...dataKeys.map(k => escape(s.data[k]))
+    ].join(','))
+  ];
+
+  const blob = new Blob([csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.setAttribute('href', url);
+  link.setAttribute('download', `motion-submissions-${new Date().toISOString().split('T')[0]}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
 }
 
 export function SubmissionsTab({ formBlobId: initialFormBlobId }: { formBlobId: string }) {
