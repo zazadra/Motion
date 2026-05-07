@@ -151,8 +151,8 @@ export default function Home() {
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       setMousePos({
-        x: (e.clientX / window.innerWidth - 0.5) * 20,
-        y: (e.clientY / window.innerHeight - 0.5) * 20
+        x: (e.clientX / window.innerWidth - 0.5) * 40,
+        y: (e.clientY / window.innerHeight - 0.5) * 40
       });
     };
     window.addEventListener('mousemove', handleMouseMove);
@@ -262,18 +262,6 @@ export default function Home() {
 
   const enabledFields = config.fields.filter(f => f.enabled);
 
-  // ── Mouse Tracking ──────────────────────────────────────────
-  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
-  useEffect(() => {
-    const handleMouse = (e: MouseEvent) => {
-      setMousePos({ 
-        x: (e.clientX / window.innerWidth - 0.5) * 40, 
-        y: (e.clientY / window.innerHeight - 0.5) * 40 
-      });
-    };
-    window.addEventListener('mousemove', handleMouse);
-    return () => window.removeEventListener('mousemove', handleMouse);
-  }, []);
 
   // ── Loading ──────────────────────────────────────────────────
   if (configLoading) return (
