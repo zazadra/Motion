@@ -166,7 +166,7 @@ export default function Home() {
       };
 
       // Step 1: Upload submission data to Walrus via on-chain certification
-      const targetOwner = config.admins && config.admins.length > 0 ? config.admins[0] : address;
+      const targetOwner = config.publishedBy || (config.admins && config.admins.length > 0 ? config.admins[0] : address);
       const { blobId } = await uploadJsonOnChain(submission, address, 1, targetOwner);
       submission.blobId = blobId;
 

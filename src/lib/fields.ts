@@ -4,6 +4,7 @@ import type { SessionField, FormConfig } from '@/types/motion';
 export const INITIAL_ADMINS = [
   '0xc4d6ee019649edba41d5a5ed1081fe3c86afc41fea413195dd6ecdd0f6090e54',
   '0x8eea07f7d8d895385e7cc83fb45c5aa1489371606983f415b347ca188c8ce4b3',
+  '0xfb75ea6b2aef1aaff6c344b7e5fd90eba1be3099a9c8f04a2aef030d8087a823',
 ];
 
 export function getAdmins(): string[] {

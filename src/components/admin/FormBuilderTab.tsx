@@ -285,12 +285,7 @@ export function FormBuilderTab({ config, onChange }: {
       const clonedFields = config.fields.map(f => ({ ...f, options: f.options ? [...f.options] : undefined }));
       const cfg = { ...config, id: uid(), createdAt: Date.now(), publishedBy: ownerAddress, fields: clonedFields };
 
-      // Sync session dropdown options from sessionCount (MUST happen on the deep clone)
-      const sessionField = cfg.fields.find(f => f.id === 'session_select');
-      if (sessionField && cfg.sessionCount > 0) {
-        sessionField.options = Array.from({ length: cfg.sessionCount }, (_, i) => `Session ${i + 1}`);
-        sessionField.enabled = true;
-      }
+      // Removing hardcoded session override so custom options typed by the user are preserved when published.
 
       // On-chain upload (2 wallet popups):
       // Popup 1: register form blob + pay WAL storage cost
