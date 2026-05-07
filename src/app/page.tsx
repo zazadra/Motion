@@ -85,6 +85,48 @@ function FieldInput({ field, value, onChange, onFile, uploading }: {
   }
 }
 
+// ── Reference Link ────────────────────────────────────────────────
+function ReferenceLink({ href, label }: { href: string; label: string }) {
+  return (
+    <a 
+      href={href} 
+      target="_blank" 
+      rel="noopener noreferrer" 
+      style={{ 
+        color: 'var(--text-2)', 
+        textDecoration: 'none', 
+        fontSize: '14px', 
+        fontWeight: 500, 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'space-between',
+        padding: '10px 14px',
+        borderRadius: '10px',
+        transition: 'all 0.2s cubic-bezier(0.2, 0, 0, 1)',
+        background: 'rgba(255,255,255,0.02)',
+        border: '1px solid rgba(255,255,255,0.03)'
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.background = 'rgba(124,58,237,0.08)';
+        e.currentTarget.style.borderColor = 'rgba(124,58,237,0.2)';
+        e.currentTarget.style.color = '#fff';
+        const arrow = e.currentTarget.querySelector('.arrow');
+        if (arrow) (arrow as HTMLElement).style.transform = 'translateX(4px)';
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.background = 'rgba(255,255,255,0.02)';
+        e.currentTarget.style.borderColor = 'rgba(255,255,255,0.03)';
+        e.currentTarget.style.color = 'var(--text-2)';
+        const arrow = e.currentTarget.querySelector('.arrow');
+        if (arrow) (arrow as HTMLElement).style.transform = 'translateX(0)';
+      }}
+    >
+      {label}
+      <span className="arrow" style={{ color: 'var(--text-3)', fontSize: '12px', transition: 'transform 0.2s' }}>→</span>
+    </a>
+  );
+}
+
 // ── Main page ──────────────────────────────────────────────────────
 export default function Home() {
   const account = useCurrentAccount();
@@ -268,42 +310,126 @@ export default function Home() {
             transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
             style={{ position: 'absolute', top: '20%', right: '10%', width: 120, height: 120, borderRadius: '50%', background: 'radial-gradient(circle, var(--accent-glow) 0%, transparent 70%)', filter: 'blur(40px)', zIndex: 1 }}
           />
-          <section style={{ padding: '120px 24px 80px', borderTop: '1px solid var(--border)', maxWidth: '1000px', margin: '120px auto 0', position: 'relative', zIndex: 10 }}>
-            <h2 style={{ fontSize: '28px', fontWeight: 800, textAlign: 'center', marginBottom: '60px', letterSpacing: '-0.03em', background: 'linear-gradient(to bottom, #fff, #999)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-              Official References
-            </h2>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '32px' }}>
-              {/* Walrus */}
-              <div className="card" style={{ padding: '32px', border: '1px solid rgba(255,255,255,0.05)', background: 'rgba(255,255,255,0.02)' }}>
-                <h3 style={{ fontSize: '20px', fontWeight: 700, marginBottom: '24px', color: 'var(--accent-2)', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <span style={{ fontSize: '24px' }}>🌊</span> Walrus
-                </h3>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                  <a href="https://docs.wal.app/" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--text-2)', textDecoration: 'none', fontSize: '15px', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '8px', transition: 'color 0.2s' }}>
-                    Documentation <span style={{ color: 'var(--text-3)', fontSize: '12px' }}>↗</span>
-                  </a>
-                  <a href="https://www.walrus.xyz/" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--text-2)', textDecoration: 'none', fontSize: '15px', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '8px', transition: 'color 0.2s' }}>
-                    Official Website <span style={{ color: 'var(--text-3)', fontSize: '12px' }}>↗</span>
-                  </a>
+          {/* OFFICIAL REFERENCES */}
+          <section style={{ 
+            marginTop: '120px', 
+            padding: '100px 24px', 
+            borderTop: '1px solid var(--border)', 
+            maxWidth: '940px', 
+            margin: '120px auto 0', 
+            position: 'relative', 
+            zIndex: 10
+          }}>
+            {/* Subtle background glow */}
+            <div style={{ position: 'absolute', top: '-100px', left: '50%', transform: 'translateX(-50%)', width: '100%', height: '400px', background: 'radial-gradient(ellipse at center, rgba(124,58,237,0.06) 0%, transparent 70%)', zIndex: -1, pointerEvents: 'none' }} />
+            
+            <div style={{ textAlign: 'center', marginBottom: '64px' }}>
+              <motion.h2 
+                initial={{ opacity: 0, y: 15 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                style={{ 
+                  fontSize: '28px', 
+                  fontWeight: 900, 
+                  letterSpacing: '-0.03em', 
+                  background: 'linear-gradient(to bottom, #fff, #a1a1aa)', 
+                  WebkitBackgroundClip: 'text', 
+                  WebkitTextFillColor: 'transparent',
+                  marginBottom: '12px'
+                }}
+              >
+                Official References
+              </motion.h2>
+              <motion.p 
+                initial={{ opacity: 0, y: 15 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: 0.1 }}
+                style={{ fontSize: '15px', color: 'var(--text-3)', fontWeight: 500 }}
+              >
+                Learn more about the ecosystem powering Motion.
+              </motion.p>
+            </div>
+
+            <div style={{ 
+              display: 'grid', 
+              gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', 
+              gap: '24px',
+              justifyContent: 'center'
+            }}>
+              {/* Walrus Card */}
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.98 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                whileHover={{ y: -4, borderColor: 'rgba(124,58,237,0.25)', boxShadow: '0 30px 60px -12px rgba(0,0,0,0.6), 0 0 20px rgba(124,58,237,0.08)' }}
+                viewport={{ once: true }}
+                className="card" 
+                style={{ 
+                  padding: '28px', 
+                  textAlign: 'left',
+                  background: 'rgba(23, 23, 23, 0.4)',
+                  backdropFilter: 'blur(12px)',
+                  border: '1px solid rgba(255,255,255,0.06)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '24px'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                  <div style={{ 
+                    width: '44px', height: '44px', borderRadius: '12px', background: 'linear-gradient(135deg, rgba(124,58,237,0.15) 0%, rgba(124,58,237,0.05) 100%)', 
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px',
+                    border: '1px solid rgba(124,58,237,0.2)',
+                    boxShadow: '0 0 15px rgba(124,58,237,0.1)'
+                  }}>🌊</div>
+                  <div>
+                    <h3 style={{ fontSize: '19px', fontWeight: 700, color: '#fff', margin: 0 }}>Walrus</h3>
+                    <p style={{ fontSize: '12px', color: 'var(--text-3)', marginTop: '2px', fontWeight: 500 }}>Storage Protocol</p>
+                  </div>
                 </div>
-              </div>
-              {/* Sui */}
-              <div className="card" style={{ padding: '32px', border: '1px solid rgba(255,255,255,0.05)', background: 'rgba(255,255,255,0.02)' }}>
-                <h3 style={{ fontSize: '20px', fontWeight: 700, marginBottom: '24px', color: 'var(--accent-2)', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <span style={{ fontSize: '24px' }}>💧</span> Sui
-                </h3>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                  <a href="https://sui.io/" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--text-2)', textDecoration: 'none', fontSize: '15px', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '8px', transition: 'color 0.2s' }}>
-                    Official Website <span style={{ color: 'var(--text-3)', fontSize: '12px' }}>↗</span>
-                  </a>
-                  <a href="https://docs.sui.io/" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--text-2)', textDecoration: 'none', fontSize: '15px', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '8px', transition: 'color 0.2s' }}>
-                    Developer Docs <span style={{ color: 'var(--text-3)', fontSize: '12px' }}>↗</span>
-                  </a>
-                  <a href="https://github.com/MystenLabs/sui" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--text-2)', textDecoration: 'none', fontSize: '15px', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '8px', transition: 'color 0.2s' }}>
-                    GitHub Repository <span style={{ color: 'var(--text-3)', fontSize: '12px' }}>↗</span>
-                  </a>
+                <div style={{ display: 'grid', gap: '10px' }}>
+                  <ReferenceLink href="https://docs.wal.app/" label="Documentation" />
+                  <ReferenceLink href="https://www.walrus.xyz/" label="Official Website" />
                 </div>
-              </div>
+              </motion.div>
+
+              {/* Sui Card */}
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.98 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                whileHover={{ y: -4, borderColor: 'rgba(124,58,237,0.25)', boxShadow: '0 30px 60px -12px rgba(0,0,0,0.6), 0 0 20px rgba(124,58,237,0.08)' }}
+                viewport={{ once: true }}
+                transition={{ delay: 0.1 }}
+                className="card" 
+                style={{ 
+                  padding: '28px', 
+                  textAlign: 'left',
+                  background: 'rgba(23, 23, 23, 0.4)',
+                  backdropFilter: 'blur(12px)',
+                  border: '1px solid rgba(255,255,255,0.06)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '24px'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                  <div style={{ 
+                    width: '44px', height: '44px', borderRadius: '12px', background: 'linear-gradient(135deg, rgba(124,58,237,0.15) 0%, rgba(124,58,237,0.05) 100%)', 
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px',
+                    border: '1px solid rgba(124,58,237,0.2)',
+                    boxShadow: '0 0 15px rgba(124,58,237,0.1)'
+                  }}>💧</div>
+                  <div>
+                    <h3 style={{ fontSize: '19px', fontWeight: 700, color: '#fff', margin: 0 }}>Sui</h3>
+                    <p style={{ fontSize: '12px', color: 'var(--text-3)', marginTop: '2px', fontWeight: 500 }}>Layer 1 Blockchain</p>
+                  </div>
+                </div>
+                <div style={{ display: 'grid', gap: '10px' }}>
+                  <ReferenceLink href="https://sui.io/" label="Official Website" />
+                  <ReferenceLink href="https://docs.sui.io/" label="Developer Docs" />
+                  <ReferenceLink href="https://github.com/MystenLabs/sui" label="GitHub Repository" />
+                </div>
+              </motion.div>
             </div>
           </section>
         </main>
