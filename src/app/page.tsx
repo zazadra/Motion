@@ -158,12 +158,18 @@ export default function Home() {
 
     setStatus('submitting');
     try {
-      const subId = uid();
       const submission: Submission = {
-        id: subId, formBlobId, data,
+        id: subId, 
+        formId: formBlobId, // Mandatory for Bug #1
+        formBlobId, 
+        data,
         submitterAddress: address,
-        timestamp: Date.now(), status: 'pending',
+        timestamp: Date.now(), 
+        status: 'pending',
       };
+
+      console.log("FORM ID:", formBlobId);
+      console.log("SUBMISSION:", submission);
 
       // Step 1: Upload submission data to Walrus via on-chain certification
       // Priority for targetOwner:
@@ -181,8 +187,10 @@ export default function Home() {
         }
       }
 
-      const { blobId } = await uploadJsonOnChain(submission, address, 1, targetOwner);
+      const result = await uploadJsonOnChain(submission, address, 1, targetOwner);
+      const { blobId } = result;
       submission.blobId = blobId;
+      console.log("UPLOAD RESULT:", result);
 
       // Step 2: Persist blobId locally + broadcast to admin tabs instantly
       addSubId(formBlobId, blobId);

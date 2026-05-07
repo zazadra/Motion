@@ -28,6 +28,7 @@ export interface FormConfig {
 
 export interface Submission {
   id: string;
+  formId: string;
   formBlobId: string;
   data: Record<string, string | string[] | boolean>;
   submitterAddress?: string;

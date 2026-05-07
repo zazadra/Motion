@@ -95,28 +95,31 @@ export function SubmissionsTab({ formBlobId: initialFormBlobId }: { formBlobId: 
     if (!fetched.length) return;
 
     const merged = [...base, ...fetched];
-    // Filter to valid submissions only (has status + formBlobId)
-    let valid = merged.filter(s => s && s.status !== undefined && s.formBlobId);
+    // Filter to valid submissions only (has status + formBlobId or formId)
+    let valid = merged.filter(s => s && s.status !== undefined && (s.formBlobId || s.formId));
     // Deduplicate by id
     const seen = new Set<string>();
     valid = valid.filter(s => { if (seen.has(s.id)) return false; seen.add(s.id); return true; });
     // Filter by form if not "show all"
-    if (key) valid = valid.filter(s => s.formBlobId === key);
+    if (key) valid = valid.filter(s => (s.formId === key || s.formBlobId === key));
 
     setSubs(valid.sort((a, b) => b.timestamp - a.timestamp));
   }, [activeBlobId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Background on-chain sync via getOwnedObjects ───────────────────
   const syncFromChain = useCallback(async () => {
+    if (typeof window === 'undefined') return;
     setSyncing(true);
+    console.log('[Sync] Starting on-chain discovery...');
     const adminAddresses = [...new Set([account?.address, ...getAdmins()])].filter(Boolean) as string[];
     const chainIds: string[] = [];
+    console.log('[Sync] Searching for blobs owned by:', adminAddresses);
 
     for (const adminAddr of adminAddresses) {
       try {
-        const { SuiJsonRpcClient, getJsonRpcFullnodeUrl } = await import('@mysten/sui/jsonRpc');
+        const { SuiClient, getFullnodeUrl } = await import('@mysten/sui/client');
         const { getWalrusClient } = await import('@/lib/walrus-onchain');
-        const client = new SuiJsonRpcClient({ url: getJsonRpcFullnodeUrl('mainnet'), network: 'mainnet' });
+        const client = new SuiClient({ url: getFullnodeUrl('mainnet') });
         const structType = await getWalrusClient().getBlobType();
 
         let hasNextPage = true;
@@ -125,20 +128,23 @@ export function SubmissionsTab({ formBlobId: initialFormBlobId }: { formBlobId: 
         while (hasNextPage) {
           const res: any = await client.getOwnedObjects({
             owner: adminAddr,
-            filter: { StructType: structType as string },
-            options: { showContent: true },
+            options: { showContent: true, showType: true },
             cursor
           });
 
           for (const obj of (res.data ?? [])) {
-            if (obj.data?.content?.dataType === 'moveObject') {
+            if (obj.data?.type?.includes('::blob::Blob')) {
               const fields = obj.data.content.fields as any;
               if (fields?.blob_id) {
                 const hex = BigInt(fields.blob_id).toString(16).padStart(64, '0');
+                console.log('[Sync] Blob ID hex:', hex);
                 const bytes = new Uint8Array(32);
                 for (let i = 0; i < 32; i++) bytes[i] = parseInt(hex.slice(i * 2, i * 2 + 2), 16);
                 const blobId = btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+                console.log('[Sync] Decoded Blob ID:', blobId);
                 chainIds.push(blobId);
+              } else {
+                console.warn('[Sync] Object missing blob_id field:', obj.data?.objectId);
               }
             }
           }
@@ -146,17 +152,19 @@ export function SubmissionsTab({ formBlobId: initialFormBlobId }: { formBlobId: 
           cursor = res.nextCursor;
         }
       } catch (e) {
-        console.warn(`[SubmissionsTab] Chain sync failed for ${adminAddr}:`, e);
+        console.error(`[Sync] Chain sync failed for ${adminAddr}:`, e);
       }
     }
 
     if (chainIds.length) {
+      console.log('[Sync] Discovered chain IDs:', chainIds);
       // Persist any newly discovered chain IDs into the local index
       const { publishSubmission } = await import('@/lib/submission-index');
       chainIds.forEach(id => publishSubmission(id, activeBlobId === 'default' ? '' : activeBlobId));
       await loadFromIndex();
+    } else {
+      console.log('[Sync] No blobs found on-chain.');
     }
-
     setSyncing(false);
   }, [account?.address, activeBlobId, loadFromIndex]);
 
@@ -183,7 +191,7 @@ export function SubmissionsTab({ formBlobId: initialFormBlobId }: { formBlobId: 
         const sub = { ...s, blobId: s.blobId ?? blobId };
         loadedIdsRef.current.add(blobId);
         const key = activeBlobId === 'default' ? '' : activeBlobId;
-        if (key && sub.formBlobId !== key) return;
+        if (key && (sub.formId !== key && sub.formBlobId !== key)) return;
         setSubs(prev => {
           if (prev.some(x => x.id === sub.id)) return prev;
           return [sub, ...prev].sort((a, b) => b.timestamp - a.timestamp);
@@ -273,8 +281,11 @@ export function SubmissionsTab({ formBlobId: initialFormBlobId }: { formBlobId: 
           </button>
         ))}
         <div style={{ marginLeft: 'auto', display: 'flex', gap: '8px' }}>
-          <button className="btn btn-ghost btn-sm" onClick={fullLoad} disabled={loading || syncing}>
-            {loading ? <><span className="spinner" style={{ width: '11px', height: '11px' }} /> Loading…</> : '↻ Refresh'}
+          <button className="btn btn-ghost btn-sm" onClick={() => { fullLoad(); syncFromChain(); }} disabled={loading || syncing} style={{ gap:'6px' }}>
+            {(loading || syncing) 
+              ? <><span className="spinner" style={{ width: '11px', height: '11px' }} /> {loading ? 'Loading…' : 'Syncing…'}</> 
+              : '↻ Refresh Dashboard'
+            }
           </button>
           <button className="btn btn-secondary btn-sm" onClick={() => exportCSV(filtered)}>Export CSV</button>
         </div>

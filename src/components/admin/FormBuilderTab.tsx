@@ -91,21 +91,25 @@ function FieldEditor({ field, onChange, onRemove, sessionCount, onSessionCountCh
             <div style={{ display:'flex', flexDirection:'column', gap:'6px', background:'rgba(124,58,237,0.08)', border:'1px solid rgba(124,58,237,0.2)', borderRadius:'8px', padding:'10px' }}>
               <label className="input-label" style={{fontSize:'11px', color:'var(--accent-2)'}}>Quick Populate Sessions</label>
               <div style={{ display:'flex', alignItems:'center', gap:'8px' }}>
-                <input type="number" min={1} max={50} defaultValue={sessionCount || 1}
-                  onKeyDown={e => {
-                    if (e.key === 'Enter') {
-                      const n = parseInt((e.target as HTMLInputElement).value);
-                      if (!isNaN(n)) onSessionCountChange(n);
-                    }
-                  }}
-                  style={{ width:'60px', textAlign:'center', padding:'4px', fontSize:'14px', fontWeight:700, borderRadius:'6px', border:'1px solid rgba(124,58,237,0.3)', background:'rgba(0,0,0,0.3)', color:'var(--accent-2)' }} />
-                <button onClick={(e) => {
-                  const input = (e.currentTarget.previousSibling as HTMLInputElement);
-                  const n = parseInt(input.value);
-                  if (!isNaN(n)) onSessionCountChange(n);
-                }} className="btn btn-primary btn-sm">Set</button>
-                <span style={{ fontSize:'11px', color:'var(--text-3)' }}>Enter number & click Set to generate Session 1, 2...</span>
-              </div>
+                <input type="number" min={1} max={50} value={sessionCount || 1}
+                   onChange={e => {
+                     const n = parseInt(e.target.value);
+                     if (!isNaN(n)) onSessionCountChange(n);
+                   }}
+                   style={{ width:'60px', height:'32px', padding:'0 8px', background:'var(--bg-2)', border:'1px solid var(--border)', borderRadius:'6px', color:'var(--text)', fontSize:'13px' }}
+                 />
+                 <span style={{ fontSize:'11px', color:'var(--text-3)' }}>Sessions to generate</span>
+               </div>
+               
+               {field.options && field.options.length > 0 && (
+                 <div style={{ marginTop:'4px', display:'flex', flexWrap:'wrap', gap:'4px' }}>
+                   {field.options.slice(0, 10).map((opt, i) => (
+                     <span key={i} style={{ fontSize:'10px', padding:'2px 6px', background:'rgba(124,58,237,0.12)', border:'1px solid rgba(124,58,237,0.2)', borderRadius:'4px', color:'var(--accent-2)' }}>{opt}</span>
+                   ))}
+                   {field.options.length > 10 && <span style={{ fontSize:'10px', color:'var(--text-3)' }}>+ {field.options.length - 10} more</span>}
+                 </div>
+               )}
+               <span style={{ fontSize:'11px', color:'var(--text-3)', opacity:0.7 }}>Changes apply immediately to the dropdown.</span>
             </div>
           )}
 
@@ -273,8 +277,11 @@ export function FormBuilderTab({ config, onChange }: {
 
     setPublishing(true);
     try {
-      // Deep-clone fields to avoid mutating shared React state references
-      const clonedFields = config.fields.map(f => ({ ...f, options: f.options ? [...f.options] : undefined }));
+      // Deep-clone fields and ensure options are preserved
+      const clonedFields = config.fields.map(f => ({
+        ...f,
+        options: f.options ? [...f.options] : undefined
+      }));
       const cfg = { ...config, id: uid(), createdAt: Date.now(), publishedBy: ownerAddress, fields: clonedFields };
 
       // Removing hardcoded session override so custom options typed by the user are preserved when published.
@@ -335,7 +342,7 @@ export function FormBuilderTab({ config, onChange }: {
               onSessionCountChange={f.id === 'session_select' ? (n) => {
                 const fields = config.fields.map(field => {
                   if (field.id === 'session_select') {
-                    return { ...field, options: Array.from({ length: n }, (_, i) => `Session ${i + 1}`) };
+                    return { ...field, options: Array.from({ length: n }, (_, i) => i === 0 ? `Walrus Session 2-Walrus Feedback` : `Session ${i + 1}`) };
                   }
                   return field;
                 });
