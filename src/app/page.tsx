@@ -232,7 +232,7 @@ function FloatingWalrus({ mousePos }: { mousePos: { x: number, y: number } }) {
         }}
       >
         <motion.img 
-          src="/walrus-1.png" alt="Walrus Peek" animate={{ scaleY: [1, 1, 0.1, 1, 1] }}
+          src="/logo.png" alt="Walrus Peek" animate={{ scaleY: [1, 1, 0.1, 1, 1] }}
           transition={{ duration: 0.2, repeat: Infinity, repeatDelay: 5 }}
           style={{ width: '100%', height: 'auto', transform: 'rotate(110deg)', filter: 'drop-shadow(0 0 30px rgba(124,58,237,0.4))' }} 
         />
@@ -247,7 +247,7 @@ function FloatingWalrus({ mousePos }: { mousePos: { x: number, y: number } }) {
         }}
       >
         <motion.img 
-          src="/walrus-1.png" alt="Walrus Peek" animate={{ scaleY: [1, 1, 0.1, 1, 1] }}
+          src="/logo.png" alt="Walrus Peek" animate={{ scaleY: [1, 1, 0.1, 1, 1] }}
           transition={{ duration: 0.2, repeat: Infinity, repeatDelay: 4.5 }}
           style={{ width: '100%', height: 'auto', transform: 'rotate(160deg)', filter: 'drop-shadow(0 0 30px rgba(124,58,237,0.3))' }} 
         />
@@ -262,14 +262,11 @@ function FloatingWalrus({ mousePos }: { mousePos: { x: number, y: number } }) {
         }}
       >
         <motion.img 
-          src="/walrus-2.png" alt="Walrus Peek" animate={{ scaleY: [1, 1, 0.1, 1, 1] }}
+          src="/logo.png" alt="Walrus Peek" animate={{ scaleY: [1, 1, 0.1, 1, 1] }}
           transition={{ duration: 0.2, repeat: Infinity, repeatDelay: 6 }}
           style={{ width: '100%', height: 'auto', transform: 'rotate(25deg)', filter: 'drop-shadow(0 0 40px rgba(124,58,237,0.5))' }} 
         />
       </motion.div>
-    </>
-  );
-}
     </>
   );
 }
