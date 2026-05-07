@@ -145,6 +145,19 @@ export default function Home() {
   const [submittedBlobId, setSubmittedBlobId] = useState('');
   const [errMsg, setErrMsg]     = useState('');
   const [wCopied, setWCopied]   = useState(false);
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+
+  // Track mouse for hero parallax
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      setMousePos({
+        x: (e.clientX / window.innerWidth - 0.5) * 20,
+        y: (e.clientY / window.innerHeight - 0.5) * 20
+      });
+    };
+    window.addEventListener('mousemove', handleMouseMove);
+    return () => window.removeEventListener('mousemove', handleMouseMove);
+  }, []);
 
   // Load form config from ?form=blobId
   useEffect(() => {
@@ -408,7 +421,7 @@ export default function Home() {
               </a>
             </motion.div>
           </motion.div>
-        </main>
+
 
           {/* ── PART 1: MOTION EXPLANATION ────────────────────────────────── */}
           <section style={{ width: '100%', maxWidth: '1200px', margin: '160px auto 0', padding: '0 24px', position: 'relative' }}>
@@ -599,44 +612,83 @@ export default function Home() {
                     { label: "Source Code", url: "https://github.com/MystenLabs/sui" }
                   ]
                 }
-              ].map((section, idx) => (
-                <motion.div 
-                  key={idx}
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  whileHover={{ y: -8, borderColor: 'rgba(124,58,237,0.3)', boxShadow: '0 30px 60px rgba(0,0,0,0.5)' }}
-                  viewport={{ once: true }}
-                  style={{ 
-                    padding: '40px', 
-                    background: 'rgba(255,255,255,0.02)',
-                    backdropFilter: 'blur(16px)',
-                    border: '1px solid var(--border)',
-                    borderRadius: '32px',
-                    display: 'flex',
-                    gap: '48px',
-                    alignItems: 'center',
-                    transition: 'all 0.3s cubic-bezier(0.2, 0, 0, 1)'
-                  }}
-                >
-                  <div style={{ flex: '0 0 auto', textAlign: 'center' }}>
-                    <div style={{ 
-                      width: '84px', height: '84px', borderRadius: '24px', background: 'rgba(124,58,237,0.05)', 
-                      display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '40px',
-                      border: '1px solid rgba(124,58,237,0.15)',
-                      boxShadow: '0 12px 24px rgba(0,0,0,0.2)',
-                      marginBottom: '16px'
-                    }}>{section.icon}</div>
-                    <h3 style={{ fontSize: '18px', fontWeight: 800, color: '#fff', margin: 0 }}>{section.title}</h3>
-                    <p style={{ fontSize: '12px', color: 'var(--text-3)', marginTop: '4px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{section.tag}</p>
-                  </div>
-                  
-                  <div style={{ flex: 1, display: 'grid', gap: '10px' }}>
-                    {section.links.map((link, lidx) => (
-                      <ReferenceLink key={lidx} href={link.url} label={link.label} />
-                    ))}
-                  </div>
-                </motion.div>
-              ))}
+              ].map((section, idx) => {
+                // Local component for reference links
+                const ReferenceLink = ({ href, label }: { href: string, label: string }) => (
+                  <a 
+                    href={href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      padding: '12px 20px',
+                      background: 'rgba(255,255,255,0.03)',
+                      border: '1px solid var(--border)',
+                      borderRadius: '14px',
+                      color: 'var(--text-1)',
+                      fontSize: '14px',
+                      fontWeight: 600,
+                      textDecoration: 'none',
+                      transition: 'all 0.2s ease',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: '8px'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = 'rgba(255,255,255,0.08)';
+                      e.currentTarget.style.borderColor = 'var(--accent-2)';
+                      e.currentTarget.style.transform = 'translateX(4px)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = 'rgba(255,255,255,0.03)';
+                      e.currentTarget.style.borderColor = 'var(--border)';
+                      e.currentTarget.style.transform = 'translateX(0)';
+                    }}
+                  >
+                    {label}
+                    <span style={{ opacity: 0.5, fontSize: '12px' }}>↗</span>
+                  </a>
+                );
+
+                return (
+                  <motion.div 
+                    key={idx}
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    whileHover={{ y: -8, borderColor: 'rgba(124,58,237,0.3)', boxShadow: '0 30px 60px rgba(0,0,0,0.5)' }}
+                    viewport={{ once: true }}
+                    style={{ 
+                      padding: '40px', 
+                      background: 'rgba(255,255,255,0.02)',
+                      backdropFilter: 'blur(16px)',
+                      border: '1px solid var(--border)',
+                      borderRadius: '32px',
+                      display: 'flex',
+                      gap: '48px',
+                      alignItems: 'center',
+                      transition: 'all 0.3s cubic-bezier(0.2, 0, 0, 1)'
+                    }}
+                  >
+                    <div style={{ flex: '0 0 auto', textAlign: 'center' }}>
+                      <div style={{ 
+                        width: '84px', height: '84px', borderRadius: '24px', background: 'rgba(124,58,237,0.05)', 
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '40px',
+                        border: '1px solid rgba(124,58,237,0.15)',
+                        boxShadow: '0 12px 24px rgba(0,0,0,0.2)',
+                        marginBottom: '16px'
+                      }}>{section.icon}</div>
+                      <h3 style={{ fontSize: '18px', fontWeight: 800, color: '#fff', margin: 0 }}>{section.title}</h3>
+                      <p style={{ fontSize: '12px', color: 'var(--text-3)', marginTop: '4px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{section.tag}</p>
+                    </div>
+                    
+                    <div style={{ flex: 1, display: 'grid', gap: '10px' }}>
+                      {section.links.map((link, lidx) => (
+                        <ReferenceLink key={lidx} href={link.url} label={link.label} />
+                      ))}
+                    </div>
+                  </motion.div>
+                );
+              })}
             </div>
           </section>
         </main>
