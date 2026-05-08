@@ -174,11 +174,10 @@ function FieldEditor({ field, onChange, onRemove, sessionCount, onSessionCountCh
           {(field.type === 'select' || field.type === 'checkbox') && (
             <div>
               <label className="input-label">Options (comma-separated)</label>
-              <textarea 
-                className="textarea"
-                rows={2}
+              <textarea
+                style={{ width:'100%', padding:'8px', background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'4px', color:'#fff', minHeight:'60px', fontSize:'13px', outline:'none' }}
                 value={optionsText}
-                placeholder="Option A, Option B, Option C"
+                placeholder="Option 1, Option 2, Option 3..."
                 onChange={e => {
                   const val = e.target.value;
                   setOptionsText(val);
@@ -188,8 +187,10 @@ function FieldEditor({ field, onChange, onRemove, sessionCount, onSessionCountCh
                     onChange({ options: parsed });
                   }
                 }}
-                style={{ fontSize:'13px', padding:'10px 12px', minHeight: '60px' }} 
               />
+              <p style={{ fontSize:'11px', color:'var(--text-3)', marginTop:'4px' }}>
+                Use commas to separate choices. Spaces between choices are fine!
+              </p>
             </div>
           )}
         </motion.div>
