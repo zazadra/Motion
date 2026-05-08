@@ -13,7 +13,7 @@ const SubmissionsTab = dynamic(() => import('@/components/admin/SubmissionsTab')
 
 type Tab = 'builder' | 'submissions';
 
-function shorten(a: string) { return `${a.slice(0,6)}…${a.slice(-4)}`; }
+function shorten(a: string) { return `${a.slice(0,6)}-${a.slice(-4)}`; }
 
 export default function AdminPage() {
   const account = useCurrentAccount();
@@ -33,28 +33,28 @@ export default function AdminPage() {
   }
 
   const TABS: { key: Tab; label: string; icon: string }[] = [
-    { key:'builder',     label:'Form Builder',  icon:'⊞' },
-    { key:'submissions', label:'Submissions',   icon:'📋' },
+    { key:'builder',     label:'Form Builder',  icon:'-' },
+    { key:'submissions', label:'Submissions',   icon:'--' },
   ];
 
-  // ── Not connected ────────────────────────────────────────────
+  // -- Not connected --------------------------------------------
   if (!account) return (
     <div style={{ minHeight:'100dvh', display:'flex', alignItems:'center', justifyContent:'center', backgroundColor:'var(--bg)', backgroundImage:'radial-gradient(ellipse 80% 40% at 50% 0%, rgba(124,58,237,0.12) 0%, transparent 60%)' }}>
       <div className="card" style={{ padding:'40px', maxWidth:'420px', width:'100%', textAlign:'center' }}>
-        <div style={{ fontSize:'48px', marginBottom:'16px' }}>🌊</div>
+        <div style={{ fontSize:'48px', marginBottom:'16px' }}>--</div>
         <h1 style={{ fontSize:'22px', fontWeight:800, marginBottom:'8px', letterSpacing:'-0.02em' }}>Walform Console</h1>
         <p style={{ fontSize:'13px', color:'var(--text-2)', marginBottom:'8px', lineHeight:1.7 }}>
           Connect your wallet to access your personal form builder dashboard.
         </p>
         <p style={{ fontSize:'12px', color:'var(--text-3)', marginBottom:'28px', lineHeight:1.6, background:'rgba(124,58,237,0.06)', padding:'10px 14px', borderRadius:'10px', border:'1px solid rgba(124,58,237,0.12)' }}>
-          ✨ Any wallet can create and manage their own forms. Your data is private to your wallet.
+          - Any wallet can create and manage their own forms. Your data is private to your wallet.
         </p>
         <ConnectButton instance={dAppKit} />
       </div>
     </div>
   );
 
-  // ── Admin dashboard — open to all wallets ─────────────────────────────
+  // -- Admin dashboard - open to all wallets -----------------------------
   return (
     <div style={{ minHeight:'100dvh', backgroundColor:'var(--bg)', position: 'relative' }}>
       {/* Header */}
@@ -98,7 +98,7 @@ export default function AdminPage() {
                 style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)', padding: '6px 12px' }}>
                 <span className="addr-dot anim-pulse" />
                 <span className="mono" style={{ color: 'var(--text-1)' }}>{shorten(account.address)}</span>
-                {copied && <span style={{ fontSize:'10px', color:'var(--success)' }}>✓</span>}
+                {copied && <span style={{ fontSize:'10px', color:'var(--success)' }}>-</span>}
               </button>
             </div>
             <button onClick={() => disconnect()}

@@ -6,7 +6,7 @@ import { getSubIds, getAllSubIds } from '@/lib/fields';
 import { getIndexedBlobIds, onNewSubmission } from '@/lib/submission-index';
 import { motion, AnimatePresence } from 'framer-motion';
 
-function shorten(a: string) { return `${a.slice(0,6)}…${a.slice(-4)}`; }
+function shorten(a: string) { return `${a.slice(0,6)}-${a.slice(-4)}`; }
 
 const STATUS_COLORS: Record<SubmissionStatus, string> = {
   pending: '#fbbf24', approved: '#4ade80', rejected: '#f87171',
@@ -41,9 +41,9 @@ function exportCSV(subs: Submission[]) {
 }
 
 interface SubmissionsTabProps {
-  /** Connected wallet address — used to scan on-chain blob ownership */
+  /** Connected wallet address - used to scan on-chain blob ownership */
   ownerAddress: string;
-  /** Currently published form blob ID — used as default filter hint, but can be cleared */
+  /** Currently published form blob ID - used as default filter hint, but can be cleared */
   formBlobId?: string;
 }
 
@@ -61,7 +61,7 @@ export function SubmissionsTab({ ownerAddress, formBlobId: initialFormBlobId }: 
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const loadedIdsRef = useRef<Set<string>>(new Set());
 
-  // ── Fast load from localStorage first ──────────────────────────────
+  // -- Fast load from localStorage first ------------------------------
   const loadFromIndex = useCallback(async (existingSubs?: Submission[]) => {
     // Collect all known blobIds from localStorage index
     let allIds: string[] = [
@@ -107,7 +107,7 @@ export function SubmissionsTab({ ownerAddress, formBlobId: initialFormBlobId }: 
     setSubs(valid.sort((a, b) => b.timestamp - a.timestamp));
   }, [filterBlobId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Fix #2: Background on-chain sync — only scan CURRENT WALLET ──────
+  // -- Fix #2: Background on-chain sync - only scan CURRENT WALLET ------
   const syncFromChain = useCallback(async () => {
     if (typeof window === 'undefined' || !ownerAddress) return;
     setSyncing(true);
@@ -162,7 +162,7 @@ export function SubmissionsTab({ ownerAddress, formBlobId: initialFormBlobId }: 
     setSyncing(false);
   }, [ownerAddress, filterBlobId, loadFromIndex]);
 
-  // ── Initial load ────────────────────────────────────────────────────
+  // -- Initial load ----------------------------------------------------
   const fullLoad = useCallback(async () => {
     setLoading(true);
     loadedIdsRef.current = new Set();
@@ -174,7 +174,7 @@ export function SubmissionsTab({ ownerAddress, formBlobId: initialFormBlobId }: 
 
   useEffect(() => { fullLoad(); }, [fullLoad]);
 
-  // ── BroadcastChannel: instant new submission from same-browser tabs ─
+  // -- BroadcastChannel: instant new submission from same-browser tabs -
   useEffect(() => {
     const unsub = onNewSubmission(async (blobId) => {
       if (loadedIdsRef.current.has(blobId)) return;
@@ -194,7 +194,7 @@ export function SubmissionsTab({ ownerAddress, formBlobId: initialFormBlobId }: 
     return unsub;
   }, [filterBlobId]);
 
-  // ── Optimistic status update ────────────────────────────────────────
+  // -- Optimistic status update ----------------------------------------
   async function updateStatus(sub: Submission, status: SubmissionStatus) {
     const updated = { ...sub, status, adminNotes: notes[sub.id] ?? sub.adminNotes ?? '' };
     setSubs(prev => prev.map(s => s.id === sub.id ? updated : s));
@@ -209,7 +209,7 @@ export function SubmissionsTab({ ownerAddress, formBlobId: initialFormBlobId }: 
     }
   }
 
-  // ── Manual import by blob ID ────────────────────────────────────────
+  // -- Manual import by blob ID ----------------------------------------
   const [manualBlobId, setManualBlobId] = useState('');
   const [manualLoading, setManualLoading] = useState(false);
   const [manualError, setManualError] = useState('');
@@ -250,23 +250,23 @@ export function SubmissionsTab({ ownerAddress, formBlobId: initialFormBlobId }: 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
 
-      {/* ── Info banner ─────────────────────────────────────── */}
+      {/* -- Info banner --------------------------------------- */}
       <div style={{ 
         padding: '12px 16px', borderRadius: '12px',
         background: 'rgba(124,58,237,0.06)', border: '1px solid rgba(124,58,237,0.15)',
         display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13px', color: 'var(--text-2)'
       }}>
-        <span style={{ fontSize: '18px' }}>🔒</span>
+        <span style={{ fontSize: '18px' }}>--</span>
         <span>
           Showing submissions for blobs owned by your wallet <span style={{ fontFamily:'var(--mono)', fontSize:'11px', color:'var(--accent-2)' }}>{shorten(ownerAddress)}</span>.
           {isShowingAll
             ? ' Displaying all forms.'
-            : <> Filtered to form <span style={{ fontFamily:'var(--mono)', fontSize:'11px', color:'var(--accent-2)' }}>{filterBlobId.slice(0,16)}…</span>.</>
+            : <> Filtered to form <span style={{ fontFamily:'var(--mono)', fontSize:'11px', color:'var(--accent-2)' }}>{filterBlobId.slice(0,16)}-</span>.</>
           }
         </span>
       </div>
 
-      {/* ── Filter bar ─────────────────────────────────────── */}
+      {/* -- Filter bar --------------------------------------- */}
       <div className="card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
           <p style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.07em' }}>
@@ -279,7 +279,7 @@ export function SubmissionsTab({ ownerAddress, formBlobId: initialFormBlobId }: 
           )}
           {syncing && (
             <span style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '11px', color: 'var(--text-3)', marginLeft: 'auto' }}>
-              <span className="spinner" style={{ width: '11px', height: '11px' }} /> syncing chain…
+              <span className="spinner" style={{ width: '11px', height: '11px' }} /> syncing chain-
             </span>
           )}
         </div>
@@ -305,7 +305,7 @@ export function SubmissionsTab({ ownerAddress, formBlobId: initialFormBlobId }: 
         </div>
       </div>
 
-      {/* ── Manual import ────────────────────────────────────── */}
+      {/* -- Manual import ---------------------------------------- */}
       <div className="card" style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
         <p style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.07em' }}>
           Import Submission by Blob ID
@@ -326,7 +326,7 @@ export function SubmissionsTab({ ownerAddress, formBlobId: initialFormBlobId }: 
         {manualError && <p style={{ fontSize: '12px', color: 'var(--error)' }}>{manualError}</p>}
       </div>
 
-      {/* ── Toolbar ─────────────────────────────────────────── */}
+      {/* -- Toolbar ------------------------------------------- */}
       <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
         {(['all', 'pending', 'approved', 'rejected'] as const).map(s => (
           <button key={s} className={`btn btn-sm ${filter === s ? 'btn-primary' : 'btn-secondary'}`}
@@ -340,19 +340,19 @@ export function SubmissionsTab({ ownerAddress, formBlobId: initialFormBlobId }: 
         <div style={{ marginLeft: 'auto', display: 'flex', gap: '8px' }}>
           <button className="btn btn-ghost btn-sm" onClick={() => { fullLoad(); }} disabled={loading || syncing} style={{ gap:'6px' }}>
             {(loading || syncing) 
-              ? <><span className="spinner" style={{ width: '11px', height: '11px' }} /> {loading ? 'Loading…' : 'Syncing…'}</> 
-              : '↻ Refresh'
+              ? <><span className="spinner" style={{ width: '11px', height: '11px' }} /> {loading ? 'Loading-' : 'Syncing-'}</> 
+              : '- Refresh'
             }
           </button>
           <button className="btn btn-secondary btn-sm" onClick={() => exportCSV(filtered)}>Export CSV</button>
         </div>
       </div>
 
-      {/* ── List ─────────────────────────────────────────── */}
+      {/* -- List ------------------------------------------- */}
       {loading ? (
         <div style={{ display: 'flex', justifyContent: 'center', padding: '100px 0', color: 'var(--text-3)', gap: '16px', flexDirection: 'column', alignItems: 'center' }}>
           <div className="spinner" style={{ width: '32px', height: '32px', borderWidth: '3px' }} />
-          <span style={{ fontSize: '14px', fontWeight: 600, letterSpacing: '0.02em' }}>Fetching submissions from Walrus…</span>
+          <span style={{ fontSize: '14px', fontWeight: 600, letterSpacing: '0.02em' }}>Fetching submissions from Walrus-</span>
         </div>
       ) : filtered.length === 0 ? (
         <div style={{ 
@@ -360,7 +360,7 @@ export function SubmissionsTab({ ownerAddress, formBlobId: initialFormBlobId }: 
           border: '1px dashed var(--border)', background: 'rgba(255,255,255,0.01)',
           color: 'var(--text-3)', fontSize: '15px' 
         }}>
-          <div style={{ fontSize: '40px', marginBottom: '16px', opacity: 0.5 }}>📭</div>
+          <div style={{ fontSize: '40px', marginBottom: '16px', opacity: 0.5 }}>--</div>
           <p style={{ fontWeight: 600, color: 'var(--text-2)', marginBottom: '6px' }}>No submissions found</p>
           <p style={{ fontSize: '13px', lineHeight: 1.6 }}>
             {isShowingAll 
@@ -420,13 +420,13 @@ export function SubmissionsTab({ ownerAddress, formBlobId: initialFormBlobId }: 
                     </div>
                     <p style={{ fontSize: '12px', color: 'var(--text-3)', fontWeight: 500 }}>
                       {s.submitterAddress ? shorten(s.submitterAddress) : 'Anonymous'}
-                      <span style={{ margin: '0 8px', opacity: 0.3 }}>•</span>
+                      <span style={{ margin: '0 8px', opacity: 0.3 }}>-</span>
                       {new Date(s.timestamp).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
                       {s.formBlobId && (
                         <>
-                          <span style={{ margin: '0 8px', opacity: 0.3 }}>•</span>
+                          <span style={{ margin: '0 8px', opacity: 0.3 }}>-</span>
                           <span style={{ fontFamily:'var(--mono)', fontSize:'10px', color:'var(--text-3)' }}>
-                            form: {s.formBlobId.slice(0,10)}…
+                            form: {s.formBlobId.slice(0,10)}-
                           </span>
                         </>
                       )}
@@ -466,7 +466,7 @@ export function SubmissionsTab({ ownerAddress, formBlobId: initialFormBlobId }: 
                           </span>
                           <div style={{ color: 'var(--text-1)', fontSize: '14px', wordBreak: 'break-word', lineHeight: 1.6 }}>
                             {typeof v === 'boolean' ? (
-                              <span style={{ color: v ? 'var(--success)' : 'var(--error)', fontWeight: 600 }}>{v ? '✓ Yes' : '✗ No'}</span>
+                              <span style={{ color: v ? 'var(--success)' : 'var(--error)', fontWeight: 600 }}>{v ? '- Yes' : '-- No'}</span>
                             ) : Array.isArray(v) ? (
                               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
                                 {v.map((item, i) => <span key={i} style={{ padding: '2px 8px', borderRadius: '4px', background: 'rgba(255,255,255,0.05)', fontSize: '12px' }}>{item}</span>)}
@@ -485,7 +485,7 @@ export function SubmissionsTab({ ownerAddress, formBlobId: initialFormBlobId }: 
                                 </div>
                               </div>
                             ) : (
-                              <span style={{ fontWeight: 500 }}>{v.toString() || <em style={{ color: 'var(--text-3)', fontWeight: 400 }}>—</em>}</span>
+                              <span style={{ fontWeight: 500 }}>{v.toString() || <em style={{ color: 'var(--text-3)', fontWeight: 400 }}>-</em>}</span>
                             )}
                           </div>
                         </div>
@@ -532,7 +532,7 @@ export function SubmissionsTab({ ownerAddress, formBlobId: initialFormBlobId }: 
                         {s.blobId && (
                           <a href={getWalrusScanUrl(s.blobId)} target="_blank" rel="noopener noreferrer"
                             className="btn btn-secondary btn-sm" style={{ textDecoration: 'none', width: 'auto', display: 'flex', alignItems: 'center', borderRadius: '12px' }}>
-                            Scanner ↗
+                            Scanner --
                           </a>
                         )}
                       </div>
