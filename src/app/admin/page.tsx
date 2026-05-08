@@ -10,15 +10,17 @@ import { motion } from 'framer-motion';
 
 const FormBuilderTab = dynamic(() => import('@/components/admin/FormBuilderTab').then(m=>m.FormBuilderTab), { ssr:false });
 const SubmissionsTab = dynamic(() => import('@/components/admin/SubmissionsTab').then(m=>m.SubmissionsTab), { ssr:false });
+const MyFormsTab = dynamic(() => import('@/components/admin/MyFormsTab').then(m=>m.MyFormsTab), { ssr:false });
+import { ToastContainer } from '@/components/ui/Toast';
 
-type Tab = 'builder' | 'submissions';
+type Tab = 'forms' | 'builder' | 'submissions';
 
 function shorten(a: string) { return `${a.slice(0,6)}-${a.slice(-4)}`; }
 
 export default function AdminPage() {
   const account = useCurrentAccount();
   const disconnect = () => dAppKit.disconnectWallet();
-  const [tab, setTab]         = useState<Tab>('builder');
+  const [tab, setTab]         = useState<Tab>('forms');
   const [config, setConfig]   = useState<FormConfig>(DEFAULT_CONFIG);
   const [copied, setCopied]   = useState(false);
 
@@ -33,6 +35,7 @@ export default function AdminPage() {
   }
 
   const TABS: { key: Tab; label: string; icon: string }[] = [
+    { key:'forms',       label:'My Forms',      icon:'-' },
     { key:'builder',     label:'Form Builder',  icon:'-' },
     { key:'submissions', label:'Submissions',   icon:'--' },
   ];
@@ -115,10 +118,12 @@ export default function AdminPage() {
       {/* Content */}
       <main style={{ maxWidth:'1100px', margin:'0 auto', padding:'32px 24px' }}>
         <motion.div key={tab} initial={{ opacity:0, y:8 }} animate={{ opacity:1, y:0 }} transition={{ duration:0.25 }}>
+          {tab === 'forms'       && <MyFormsTab ownerAddress={account.address} onSelectForm={(f) => { handleConfigChange(f); setTab('builder'); }} />}
           {tab === 'builder'     && <FormBuilderTab config={config} onChange={handleConfigChange} ownerAddress={account.address} />}
           {tab === 'submissions' && <SubmissionsTab ownerAddress={account.address} formBlobId={config.publishedBlobId} />}
         </motion.div>
       </main>
+      <ToastContainer />
     </div>
   );
 }

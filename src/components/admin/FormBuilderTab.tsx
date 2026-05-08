@@ -325,6 +325,7 @@ export function FormBuilderTab({ config, onChange, ownerAddress }: {
       const cfg: FormConfig = { 
         ...config, 
         id: uid(), 
+        type: 'form',
         createdAt: Date.now(), 
         publishedBy: ownerAddress, 
         fields: clonedFields,
@@ -364,6 +365,20 @@ export function FormBuilderTab({ config, onChange, ownerAddress }: {
           <textarea className="textarea" rows={2} value={config.description}
             onChange={e => onChange({ ...config, description: e.target.value })}
             style={{ minHeight:'unset', resize:'none' }} />
+        </div>
+        
+        {/* Seal Encryption Toggle */}
+        <div style={{ marginTop: '8px', padding: '16px', borderRadius: '12px', background: 'rgba(74, 222, 128, 0.05)', border: '1px solid rgba(74, 222, 128, 0.15)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div>
+              <p style={{ fontSize: '14px', fontWeight: 600, color: 'var(--success)' }}>E2E Seal Encryption</p>
+              <p style={{ fontSize: '12px', color: 'var(--text-2)', marginTop: '4px' }}>Submissions are encrypted and only accessible by your wallet.</p>
+            </div>
+            <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+              <input type="checkbox" className="toggle" checked={!!config.encryptionEnabled} 
+                     onChange={e => onChange({ ...config, encryptionEnabled: e.target.checked })} />
+            </label>
+          </div>
         </div>
       </div>
 
@@ -428,21 +443,6 @@ export function FormBuilderTab({ config, onChange, ownerAddress }: {
               <a href={pubUrl} target="_blank" rel="noopener noreferrer" className="btn btn-ghost" style={{ padding:'0 12px', display:'flex', alignItems:'center' }}>
                 -- Open
               </a>
-            </div>
-
-            {/* Form Blob ID - admin needs this for Submissions tab */}
-            <div style={{ padding:'10px 12px', borderRadius:'8px', background:'rgba(74,222,128,0.06)', border:'1px solid rgba(74,222,128,0.2)', display:'flex', flexDirection:'column', gap:'6px' }}>
-              <p style={{ fontSize:'11px', fontWeight:600, color:'#4ade80', textTransform:'uppercase', letterSpacing:'0.06em' }}>Form Blob ID (for Submissions tab)</p>
-              <div style={{ display:'flex', gap:'6px', alignItems:'center' }}>
-                <code style={{ flex:1, fontSize:'11px', fontFamily:'var(--mono)', color:'var(--text-1)', wordBreak:'break-all' }}>
-                  {pubBlobId}
-                </code>
-                <button className="btn btn-ghost btn-sm" style={{ flexShrink:0 }}
-                  onClick={() => { navigator.clipboard.writeText(pubBlobId); setCopiedBlobId(true); setTimeout(()=>setCopiedBlobId(false), 2000); }}>
-                  {copiedBlobId ? '- Copied' : 'Copy ID'}
-                </button>
-              </div>
-              <p style={{ fontSize:'11px', color:'var(--text-3)' }}>Paste this in the Submissions tab to see all submissions for this form.</p>
             </div>
           </div>
         )}

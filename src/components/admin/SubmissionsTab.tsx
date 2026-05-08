@@ -4,6 +4,7 @@ import type { Submission, SubmissionStatus } from '@/types/walform';
 import { readJsonFromWalrus, getWalrusScanUrl, uploadJsonToWalrus, getWalrusBlobUrl } from '@/lib/walrus';
 import { getSubIds, getAllSubIds } from '@/lib/fields';
 import { getIndexedBlobIds, onNewSubmission } from '@/lib/submission-index';
+import { getCachedSubIds } from '@/lib/form-registry';
 import { motion, AnimatePresence } from 'framer-motion';
 
 function shorten(a: string) { return `${a.slice(0,6)}-${a.slice(-4)}`; }
@@ -48,7 +49,6 @@ interface SubmissionsTabProps {
 }
 
 export function SubmissionsTab({ ownerAddress, formBlobId: initialFormBlobId }: SubmissionsTabProps) {
-  // Fix #1: Default to 'all' so submissions always appear even after re-publishing
   const [filterBlobId, setFilterBlobId] = useState<string>('');
   const [blobIdInput, setBlobIdInput]   = useState(initialFormBlobId && initialFormBlobId !== 'default' ? initialFormBlobId : '');
 
@@ -63,10 +63,11 @@ export function SubmissionsTab({ ownerAddress, formBlobId: initialFormBlobId }: 
 
   // -- Fast load from localStorage first ------------------------------
   const loadFromIndex = useCallback(async (existingSubs?: Submission[]) => {
-    // Collect all known blobIds from localStorage index
+    // Collect all known blobIds from localStorage indexes
     let allIds: string[] = [
       ...getIndexedBlobIds(),
       ...getAllSubIds(),
+      ...getCachedSubIds(ownerAddress),
       ...(filterBlobId ? getSubIds(filterBlobId) : []),
     ];
     allIds = [...new Set(allIds)];
@@ -105,91 +106,22 @@ export function SubmissionsTab({ ownerAddress, formBlobId: initialFormBlobId }: 
     }
 
     setSubs(valid.sort((a, b) => b.timestamp - a.timestamp));
-  }, [filterBlobId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [filterBlobId, ownerAddress]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // -- On-chain sync: scan blobs owned by admin wallet ----------------
   const syncFromChain = useCallback(async () => {
     if (typeof window === 'undefined' || !ownerAddress) return;
     setSyncing(true);
-    console.log('[Sync] Scanning blobs owned by wallet:', ownerAddress);
+    console.log('[Sync] Scanning blobs owned by wallet via registry:', ownerAddress);
 
     try {
-      // @mysten/sui v2.x uses SuiJsonRpcClient from @mysten/sui/jsonRpc
-      const { SuiJsonRpcClient, getJsonRpcFullnodeUrl } = await import('@mysten/sui/jsonRpc');
-      const { readJsonFromWalrus: fetchBlob } = await import('@/lib/walrus');
+      const { scanOwnedBlobs } = await import('@/lib/form-registry');
+      const { submissions } = await scanOwnedBlobs(ownerAddress);
 
-      const client = new SuiJsonRpcClient({ url: getJsonRpcFullnodeUrl('mainnet'), network: 'mainnet' });
-
-      let hasNextPage = true;
-      let cursor: string | null = null;
-      const newBlobIds: string[] = [];
-
-      while (hasNextPage) {
-        const res = await client.getOwnedObjects({
-          owner: ownerAddress,
-          filter: {
-            StructType: '0x9f992cc2430a1f442ca7a5ca7638169f5d5c00e0221b5bcef8678cb5cef23516::blob::Blob'
-          },
-          options: { showContent: true },
-          cursor: cursor ?? undefined,
-          limit: 50,
-        });
-
-        for (const obj of (res.data ?? [])) {
-          const fields = (obj.data?.content as any)?.fields;
-          if (!fields?.blob_id) continue;
-          try {
-            // blob_id is stored as a u256 decimal integer - convert to base64url
-            const hex = BigInt(fields.blob_id).toString(16).padStart(64, '0');
-            const bytes = new Uint8Array(32);
-            for (let i = 0; i < 32; i++) bytes[i] = parseInt(hex.slice(i * 2, i * 2 + 2), 16);
-            const blobId = btoa(String.fromCharCode(...bytes))
-              .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-
-            if (!loadedIdsRef.current.has(blobId)) {
-              newBlobIds.push(blobId);
-            }
-          } catch {
-            // skip malformed entries
-          }
-        }
-
-        hasNextPage = res.hasNextPage;
-        cursor = res.nextCursor ?? null;
-      }
-
-      console.log(`[Sync] Found ${newBlobIds.length} new blob(s) on-chain.`);
-
-      if (newBlobIds.length === 0) {
-        setSyncing(false);
-        return;
-      }
-
-      // Fetch each blob and validate: must have 'status' field to be a submission
-      const results = await Promise.allSettled(
-        newBlobIds.map(id =>
-          fetchBlob<Submission>(id).then(s => ({ ...s, blobId: s.blobId ?? id }))
-        )
-      );
-
-      const fetched: Submission[] = [];
-      results.forEach((r, i) => {
-        if (r.status === 'fulfilled' && r.value?.status !== undefined) {
-          loadedIdsRef.current.add(newBlobIds[i]);
-          fetched.push(r.value);
-          // Also index in localStorage for future page loads
-          const fid = r.value.formBlobId || r.value.formId || '';
-          import('@/lib/fields').then(({ addSubId }) => addSubId(fid, newBlobIds[i]));
-          import('@/lib/submission-index').then(({ publishSubmission }) =>
-            publishSubmission(newBlobIds[i], fid)
-          );
-        }
-      });
-
-      if (fetched.length > 0) {
-        console.log(`[Sync] ${fetched.length} valid submission(s) found on-chain.`);
+      if (submissions.length > 0) {
+        console.log(`[Sync] ${submissions.length} valid submission(s) found on-chain.`);
         setSubs(prev => {
-          const combined = [...prev, ...fetched];
+          const combined = [...prev, ...submissions];
           const seen = new Set<string>();
           const deduped = combined.filter(s => {
             if (seen.has(s.id)) return false;
@@ -197,6 +129,11 @@ export function SubmissionsTab({ ownerAddress, formBlobId: initialFormBlobId }: 
             return true;
           });
           return deduped.sort((a, b) => b.timestamp - a.timestamp);
+        });
+        
+        // Also add new IDs to loadedIdsRef so they aren't re-fetched by onNewSubmission
+        submissions.forEach(s => {
+          if (s.blobId) loadedIdsRef.current.add(s.blobId);
         });
       }
     } catch (e) {
@@ -251,41 +188,6 @@ export function SubmissionsTab({ ownerAddress, formBlobId: initialFormBlobId }: 
     } finally {
       setUpdatingId(null);
     }
-  }
-
-  // -- Manual import by blob ID ----------------------------------------
-  const [manualBlobId, setManualBlobId] = useState('');
-  const [manualLoading, setManualLoading] = useState(false);
-  const [manualError, setManualError] = useState('');
-
-  async function importManual() {
-    const id = manualBlobId.trim();
-    if (!id) return;
-    if (loadedIdsRef.current.has(id)) {
-      setManualError('Already loaded.');
-      return;
-    }
-    setManualLoading(true);
-    setManualError('');
-    try {
-      const s = await readJsonFromWalrus<Submission>(id);
-      if (!s?.status) { setManualError('Not a valid submission blob.'); setManualLoading(false); return; }
-      const sub = { ...s, blobId: s.blobId ?? id };
-      loadedIdsRef.current.add(id);
-      // Persist to localStorage index so it appears on next load
-      const { addSubId } = await import('@/lib/fields');
-      const { publishSubmission } = await import('@/lib/submission-index');
-      addSubId(sub.formBlobId || sub.formId || '', id);
-      publishSubmission(id, sub.formBlobId || sub.formId || '');
-      setSubs(prev => {
-        if (prev.some(x => x.id === sub.id)) return prev;
-        return [sub, ...prev].sort((a, b) => b.timestamp - a.timestamp);
-      });
-      setManualBlobId('');
-    } catch {
-      setManualError('Failed to fetch. Check the blob ID and try again.');
-    }
-    setManualLoading(false);
   }
 
   const filtered = subs.filter(s => filter === 'all' || s.status === filter);
@@ -348,27 +250,6 @@ export function SubmissionsTab({ ownerAddress, formBlobId: initialFormBlobId }: 
             </button>
           )}
         </div>
-      </div>
-
-      {/* -- Manual import ---------------------------------------- */}
-      <div className="card" style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-        <p style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.07em' }}>
-          Import Submission by Blob ID
-        </p>
-        <div style={{ display: 'flex', gap: '8px' }}>
-          <input
-            className="input"
-            placeholder="Paste submission blob ID (from submitter's confirmation screen)"
-            value={manualBlobId}
-            onChange={e => { setManualBlobId(e.target.value); setManualError(''); }}
-            onKeyDown={e => e.key === 'Enter' && importManual()}
-            style={{ flex: 1, fontSize: '12px', fontFamily: 'var(--mono)' }}
-          />
-          <button className="btn btn-secondary btn-sm" onClick={importManual} disabled={manualLoading || !manualBlobId.trim()}>
-            {manualLoading ? <span className="spinner" style={{ width: '12px', height: '12px' }} /> : 'Import'}
-          </button>
-        </div>
-        {manualError && <p style={{ fontSize: '12px', color: 'var(--error)' }}>{manualError}</p>}
       </div>
 
       {/* -- Toolbar ------------------------------------------- */}
@@ -593,3 +474,4 @@ export function SubmissionsTab({ ownerAddress, formBlobId: initialFormBlobId }: 
     </div>
   );
 }
+

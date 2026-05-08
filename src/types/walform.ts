@@ -15,6 +15,7 @@ export interface SessionField {
 }
 
 export interface FormConfig {
+  type?: 'form'; // Discriminator for Walrus blob scanning
   id: string;
   title: string;
   description: string;
@@ -23,13 +24,16 @@ export interface FormConfig {
   admins: string[];
   createdAt: number;
   publishedBlobId?: string;
-  publishedBy?: string;
+  publishedBy?: string; // ownerWallet
+  encryptionEnabled?: boolean; // Seal encryption flag
 }
 
 export interface Submission {
+  type?: 'submission'; // Discriminator for Walrus blob scanning
   id: string;
   formId: string;
   formBlobId: string;
+  parentFormBlobId?: string; // Explicit parent link
   data: Record<string, string | string[] | boolean>;
   submitterAddress?: string;
   signature?: string;
