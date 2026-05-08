@@ -5,7 +5,7 @@ import { ConnectButton } from '@mysten/dapp-kit-react/ui';
 import { dAppKit } from '@/app/dapp-kit';
 import { readJsonFromWalrus, getWalrusScanUrl } from '@/lib/walrus';
 import { uploadOnChain, uploadJsonOnChain } from '@/lib/walrus-onchain';
-import { addSubId, DEFAULT_CONFIG } from '@/lib/fields';
+import { addSubId, DEFAULT_CONFIG, loadAdminConfig } from '@/lib/fields';
 import { publishSubmission } from '@/lib/submission-index';
 import type { FormConfig, SessionField, Submission } from '@/types/walform';
 import { motion, AnimatePresence, useScroll, useTransform, useSpring } from 'framer-motion';
@@ -41,6 +41,29 @@ function FieldInput({ field, value, onChange, onFile, uploading }: {
         </select>
       );
     case 'checkbox':
+      if (field.options && field.options.length > 0) {
+        const selected = (value as string[]) || [];
+        return (
+          <div style={{ display:'flex', flexDirection:'column', gap:'10px', marginTop:'4px' }}>
+            {field.options.map(opt => (
+              <label key={opt} style={{ display:'flex', alignItems:'center', gap:'12px', cursor:'pointer', fontSize:'14px', color:'var(--text-2)' }}>
+                <input 
+                  type="checkbox" 
+                  checked={selected.includes(opt)} 
+                  onChange={e => {
+                    const next = e.target.checked 
+                      ? [...selected, opt]
+                      : selected.filter(s => s !== opt);
+                    onChange(next);
+                  }}
+                  style={{ width:'18px', height:'18px', accentColor:'var(--accent)', cursor:'pointer' }}
+                />
+                <span>{opt}</span>
+              </label>
+            ))}
+          </div>
+        );
+      }
       return (
         <label style={{ display:'flex', alignItems:'flex-start', gap:'10px', cursor:'pointer', fontSize:'14px', color:'var(--text-2)' }}>
           <input type="checkbox" checked={!!value} onChange={e=>onChange(e.target.checked)}
@@ -358,16 +381,58 @@ export default function Home() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [currentStep, data, enabledFields, status]);
 
-  // Load form config from ?form=blobId
+  // Load form config from ?form=blobId or fallback to localStorage
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const fid = params.get('form');
-    if (!fid) { setConfigLoading(false); return; }
+    
+    if (!fid) { 
+      // Try loading from admin config in localStorage for "live preview"
+      const local = loadAdminConfig();
+      if (local) {
+        setConfig(local);
+        setFormBlobId('local'); // Trigger form view instead of landing page
+      }
+      setConfigLoading(false); 
+      return; 
+    }
+
     setFormBlobId(fid);
-    readJsonFromWalrus<FormConfig>(fid)
-      .then(cfg => setConfig(cfg))
-      .catch(() => {})
-      .finally(() => setConfigLoading(false));
+    
+    // Performance optimization: If we have the exact same config in localStorage, use it instantly
+    const local = loadAdminConfig();
+    if (local && local.publishedBlobId === fid) {
+      console.log("⚡ Instant load: Using local cache for published form");
+      setConfig(local);
+      setConfigLoading(false);
+      return;
+    }
+
+    let attempts = 0;
+    const fetchConfig = async () => {
+      try {
+        const cfg = await readJsonFromWalrus<FormConfig>(fid);
+        if (cfg && cfg.fields) {
+          setConfig(cfg);
+          setConfigLoading(false);
+          return true;
+        }
+      } catch (err) {
+        console.warn(`Attempt ${attempts + 1} failed to load form:`, err);
+      }
+      return false;
+    };
+
+    const run = async () => {
+      const success = await fetchConfig();
+      if (!success && attempts < 3) {
+        attempts++;
+        setTimeout(run, 2000); // Retry faster (2s)
+      } else {
+        setConfigLoading(false);
+      }
+    };
+    run();
   }, []);
 
   function setField(id: string, v: string|string[]|boolean) {

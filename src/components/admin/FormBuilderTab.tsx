@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useCurrentAccount } from '@mysten/dapp-kit-react';
 import type { FormConfig, SessionField, SessionFieldType } from '@/types/walform';
 import { uploadJsonOnChain } from '@/lib/walrus-onchain';
@@ -33,6 +33,18 @@ function FieldEditor({ field, onChange, onRemove, sessionCount, onSessionCountCh
   onSessionCountChange?: (n: number) => void;
 }) {
   const [open, setOpen] = useState(false);
+  const [optionsText, setOptionsText] = useState(field.options?.join(', ') ?? '');
+
+  // Keep local text in sync with external options changes ONLY when meaningfully different
+  useEffect(() => {
+    const extOptions = field.options?.join(', ') ?? '';
+    const localOptions = optionsText.split(',').map(o => o.trim()).filter(Boolean).join(', ');
+    const extNormalized = field.options?.join(', ') ?? '';
+    
+    if (field.options && localOptions !== extNormalized) {
+      setOptionsText(extOptions);
+    }
+  }, [field.options]);
 
   return (
     <div style={{
@@ -138,7 +150,10 @@ function FieldEditor({ field, onChange, onRemove, sessionCount, onSessionCountCh
             <div>
               <label className="input-label">Field Type</label>
               <select className="select" value={field.type}
-                onChange={e => onChange({ type: e.target.value as SessionFieldType, options: e.target.value === 'select' ? (field.options ?? ['Option 1']) : undefined })}>
+                onChange={e => onChange({ 
+                  type: e.target.value as SessionFieldType, 
+                  options: (e.target.value === 'select' || e.target.value === 'checkbox') ? (field.options ?? ['Option 1']) : undefined 
+                })}>
                 {FIELD_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
               </select>
             </div>
@@ -155,16 +170,24 @@ function FieldEditor({ field, onChange, onRemove, sessionCount, onSessionCountCh
               onChange={e => onChange({ helpText: e.target.value })} />
           </div>
 
-          {/* Select options */}
-          {field.type === 'select' && (
+          {/* Select / Checkbox options */}
+          {(field.type === 'select' || field.type === 'checkbox') && (
             <div>
               <label className="input-label">Options (comma-separated)</label>
               <textarea 
                 className="textarea"
                 rows={2}
-                value={field.options?.join(', ') ?? ''}
+                value={optionsText}
                 placeholder="Option A, Option B, Option C"
-                onChange={e => onChange({ options: e.target.value.split(',').map(o => o.trim()).filter(Boolean) })}
+                onChange={e => {
+                  const val = e.target.value;
+                  setOptionsText(val);
+                  const parsed = val.split(',').map(o => o.trim()).filter(Boolean);
+                  // Only notify parent if the actual list of options changed
+                  if (JSON.stringify(parsed) !== JSON.stringify(field.options || [])) {
+                    onChange({ options: parsed });
+                  }
+                }}
                 style={{ fontSize:'13px', padding:'10px 12px', minHeight: '60px' }} 
               />
             </div>
@@ -194,7 +217,7 @@ function CustomFieldCreator({ onAdd }: { onAdd: (f: SessionField) => void }) {
       label: draft.label.trim(), type: draft.type, required: draft.required, enabled: true,
       helpText: draft.helpText.trim() || undefined,
       placeholder: draft.placeholder.trim() || undefined,
-      options: draft.type === 'select' ? draft.options.split(',').map(o => o.trim()).filter(Boolean) : undefined,
+      options: (draft.type === 'select' || draft.type === 'checkbox') ? draft.options.split(',').map(o => o.trim()).filter(Boolean) : undefined,
     };
     onAdd(field);
     setDraft(EMPTY_DRAFT); setErr(''); setOpen(false);
@@ -234,7 +257,7 @@ function CustomFieldCreator({ onAdd }: { onAdd: (f: SessionField) => void }) {
             onChange={e => setDraft(d=>({...d,placeholder:e.target.value}))} />
           <input className="input" placeholder="Help text (optional)" value={draft.helpText}
             onChange={e => setDraft(d=>({...d,helpText:e.target.value}))} />
-          {draft.type === 'select' && (
+          {(draft.type === 'select' || draft.type === 'checkbox') && (
             <input className="input" placeholder="Options: A, B, C (comma-separated)" value={draft.options}
               onChange={e => setDraft(d=>({...d,options:e.target.value}))} />
           )}
@@ -362,20 +385,36 @@ export function FormBuilderTab({ config, onChange }: {
           Uploads the form config to Walrus and generates a shareable link.
           <strong style={{color:'var(--text-1)'}}> Your wallet will ask for approval first.</strong>
         </p>
-        <button className="btn btn-primary btn-lg" onClick={publish} disabled={publishing}>
-          {publishing
-            ? <><span className="spinner" /> Publishing to Walrus…</>
-            : '🚀 Sign & Publish Form'}
-        </button>
+        <div style={{ display:'flex', gap:'12px' }}>
+          <button className="btn btn-primary" style={{ flex: 1 }} onClick={publish} disabled={publishing}>
+            {publishing
+              ? <><span className="spinner" /> Publishing...</>
+              : '🚀 Sign & Publish Form'}
+          </button>
+          <a href="/" target="_blank" rel="noopener noreferrer" className="btn btn-secondary" style={{ flex: 1, textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            👁️ Preview Locally
+          </a>
+        </div>
 
         {pubUrl && (
-          <>
+          <div style={{ marginTop:'12px', display:'flex', flexDirection:'column', gap:'12px' }}>
+            <div style={{ padding:'12px', borderRadius:'12px', background:'rgba(74,222,128,0.1)', border:'1px solid rgba(74,222,128,0.2)', display:'flex', alignItems:'center', gap:'10px' }}>
+              <span style={{ fontSize:'20px' }}>✅</span>
+              <div>
+                <p style={{ fontSize:'14px', fontWeight:600, color:'#4ade80' }}>Published Successfully!</p>
+                <p style={{ fontSize:'12px', color:'var(--text-3)' }}>It may take 30-60 seconds for the decentralized link to update.</p>
+              </div>
+            </div>
+
             {/* Form URL */}
-            <div style={{ display:'flex', gap:'6px' }}>
+            <div style={{ display:'flex', gap:'8px' }}>
               <div style={{ flex:1, background:'rgba(255,255,255,0.04)', border:'1px solid var(--border)', borderRadius:'8px', padding:'10px 12px', fontSize:'12px', fontFamily:'var(--mono)', color:'var(--text-2)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
                 {pubUrl}
               </div>
-              <button className="btn btn-secondary" onClick={copy}>{copied ? '✓ Copied' : 'Copy Link'}</button>
+              <button className="btn btn-secondary" onClick={copy}>{copied ? '✓' : 'Copy'}</button>
+              <a href={pubUrl} target="_blank" rel="noopener noreferrer" className="btn btn-ghost" style={{ padding:'0 12px', display:'flex', alignItems:'center' }}>
+                🔗 Open
+              </a>
             </div>
 
             {/* Form Blob ID — admin needs this for Submissions tab */}
@@ -392,7 +431,7 @@ export function FormBuilderTab({ config, onChange }: {
               </div>
               <p style={{ fontSize:'11px', color:'var(--text-3)' }}>Paste this in the Submissions tab to see all submissions for this form.</p>
             </div>
-          </>
+          </div>
         )}
       </div>
     </div>
