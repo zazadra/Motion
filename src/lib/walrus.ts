@@ -83,9 +83,18 @@ export async function readBlobFromWalrus(blobId: string): Promise<Uint8Array> {
   return new Uint8Array(await res.arrayBuffer());
 }
 
-export async function readJsonFromWalrus<T>(blobId: string): Promise<T> {
-  const bytes = await readBlobFromWalrus(blobId);
-  return JSON.parse(new TextDecoder().decode(bytes)) as T;
+export async function readJsonFromWalrus<T>(blobId: string, retries = 3): Promise<T> {
+  let lastErr: any;
+  for (let i = 0; i < retries; i++) {
+    try {
+      const bytes = await readBlobFromWalrus(blobId);
+      return JSON.parse(new TextDecoder().decode(bytes)) as T;
+    } catch (err) {
+      lastErr = err;
+      if (i < retries - 1) await new Promise(r => setTimeout(r, 2000 * (i + 1)));
+    }
+  }
+  throw lastErr;
 }
 
 export function getWalrusBlobUrl(blobId: string) {

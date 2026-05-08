@@ -5,6 +5,7 @@ import { readJsonFromWalrus, getWalrusScanUrl, uploadJsonToWalrus, getWalrusBlob
 import { getSubIds, getAllSubIds } from '@/lib/fields';
 import { getIndexedBlobIds, onNewSubmission } from '@/lib/submission-index';
 import { getCachedSubIds } from '@/lib/form-registry';
+import { getLatestRegistry, type SubmissionMetadata } from '@/lib/registry';
 import { motion, AnimatePresence } from 'framer-motion';
 
 function shorten(a: string) { return `${a.slice(0,6)}-${a.slice(-4)}`; }
@@ -109,35 +110,72 @@ export function SubmissionsTab({ ownerAddress, formBlobId: initialFormBlobId }: 
   }, [filterBlobId, ownerAddress]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // -- On-chain sync: scan blobs owned by admin wallet ----------------
-  const syncFromChain = useCallback(async () => {
+  const syncFromChain = useCallback(async (isAuto = false) => {
     if (typeof window === 'undefined' || !ownerAddress) return;
-    setSyncing(true);
-    console.log('[Sync] Scanning blobs owned by wallet via registry:', ownerAddress);
+    if (!isAuto) setSyncing(true);
+    
+    console.log('[Sync] Fetching registry for wallet:', ownerAddress);
 
     try {
-      const { scanOwnedBlobs } = await import('@/lib/form-registry');
-      const { submissions } = await scanOwnedBlobs(ownerAddress);
-
-      if (submissions.length > 0) {
-        console.log(`[Sync] ${submissions.length} valid submission(s) found on-chain.`);
-        setSubs(prev => {
-          const combined = [...prev, ...submissions];
-          const seen = new Set<string>();
-          const deduped = combined.filter(s => {
-            if (seen.has(s.id)) return false;
-            seen.add(s.id);
-            return true;
-          });
-          return deduped.sort((a, b) => b.timestamp - a.timestamp);
-        });
+      // 1. Try Registry First (Fast)
+      const registry = await getLatestRegistry(ownerAddress);
+      
+      if (registry && registry.submissions.length > 0) {
+        console.log(`[Sync] Registry found with ${registry.submissions.length} entries.`);
         
-        // Also add new IDs to loadedIdsRef so they aren't re-fetched by onNewSubmission
-        submissions.forEach(s => {
-          if (s.blobId) loadedIdsRef.current.add(s.blobId);
-        });
+        // Find new IDs not yet in loadedIdsRef
+        const newMetas = registry.submissions.filter(m => !loadedIdsRef.current.has(m.blobId));
+        
+        if (newMetas.length > 0) {
+          console.log(`[Sync] Fetching ${newMetas.length} new submissions from registry...`);
+          
+          const results = await Promise.allSettled(
+            newMetas.map(m => readJsonFromWalrus<Submission>(m.blobId).then(s => ({ ...s, blobId: m.blobId })))
+          );
+
+          const fetched: Submission[] = [];
+          results.forEach((r, i) => {
+            if (r.status === 'fulfilled') {
+              loadedIdsRef.current.add(newMetas[i].blobId);
+              fetched.push(r.value);
+            }
+          });
+
+          if (fetched.length > 0) {
+            setSubs(prev => {
+              const combined = [...prev, ...fetched];
+              const seen = new Set<string>();
+              const deduped = combined.filter(s => {
+                if (seen.has(s.id)) return false;
+                seen.add(s.id);
+                return true;
+              });
+              return deduped.sort((a, b) => b.timestamp - a.timestamp);
+            });
+          }
+        }
+      } else {
+        // 2. Fallback to full scan if no registry or forced refresh
+        console.log('[Sync] No registry found or empty, falling back to blockchain scan...');
+        const { scanOwnedBlobs } = await import('@/lib/form-registry');
+        const { submissions } = await scanOwnedBlobs(ownerAddress);
+
+        if (submissions.length > 0) {
+          setSubs(prev => {
+            const combined = [...prev, ...submissions];
+            const seen = new Set<string>();
+            const deduped = combined.filter(s => {
+              if (seen.has(s.id)) return false;
+              seen.add(s.id);
+              return true;
+            });
+            return deduped.sort((a, b) => b.timestamp - a.timestamp);
+          });
+          submissions.forEach(s => { if (s.blobId) loadedIdsRef.current.add(s.blobId); });
+        }
       }
     } catch (e) {
-      console.error('[Sync] Chain scan failed:', e);
+      console.error('[Sync] Sync failed:', e);
     }
 
     setSyncing(false);
@@ -153,7 +191,14 @@ export function SubmissionsTab({ ownerAddress, formBlobId: initialFormBlobId }: 
     syncFromChain();
   }, [loadFromIndex, syncFromChain]);
 
-  useEffect(() => { fullLoad(); }, [fullLoad]);
+  useEffect(() => { 
+    fullLoad(); 
+    // Auto-refresh every 10s
+    const interval = setInterval(() => {
+      syncFromChain(true);
+    }, 10000);
+    return () => clearInterval(interval);
+  }, [fullLoad, syncFromChain]);
 
   // -- BroadcastChannel: instant new submission from same-browser tabs -
   useEffect(() => {

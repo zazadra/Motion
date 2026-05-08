@@ -111,5 +111,6 @@ export const DEFAULT_CONFIG: FormConfig = {
   fields: DEFAULT_FIELDS,
   sessionCount: 1,
   admins: [...INITIAL_ADMINS],
+  publishedBy: INITIAL_ADMINS[1], // Master admin
   createdAt: 0,
 };
