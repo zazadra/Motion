@@ -94,6 +94,11 @@ export function getArchivedFormIds(wallet: string): string[] {
   return map[wallet] ?? [];
 }
 
+/** Cache a form blob ID for a wallet so it appears in My Forms */
+export function cacheFormId(wallet: string, blobId: string) {
+  addCachedId(FORMS_CACHE_KEY, wallet, blobId);
+}
+
 // ---------- main scan ----------
 
 /**
@@ -106,9 +111,10 @@ export async function scanOwnedBlobs(wallet: string): Promise<{
   submissions: Submission[];
 }> {
   const { SuiJsonRpcClient, getJsonRpcFullnodeUrl } = await import('@mysten/sui/jsonRpc');
+  const { NETWORK } = await import('@/lib/walrus');
   const client = new SuiJsonRpcClient({
-    url: getJsonRpcFullnodeUrl('mainnet'),
-    network: 'mainnet',
+    url: getJsonRpcFullnodeUrl(NETWORK as any),
+    network: NETWORK as any,
   });
 
   const newBlobIds: string[] = [];

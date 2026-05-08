@@ -71,41 +71,113 @@ function FieldInput({ field, value, onChange, onFile, uploading }: {
           <span>{field.label}{field.linkUrl && <> - <a href={field.linkUrl} target="_blank" rel="noopener noreferrer" style={{color:'var(--accent-2)'}}>{field.linkText||field.linkUrl}</a></>}</span>
         </label>
       );
-    case 'file':
+    case 'file': {
+      const currentFiles = Array.isArray(value) ? (value as string[]) : (value && typeof value === 'string' ? [value as string] : []);
+      const triggerInput = () => {
+        const input = document.getElementById(`file-input-${field.id}`);
+        if (input) (input as HTMLInputElement).click();
+      };
+      const removeFile = (idx: number) => {
+        const next = currentFiles.filter((_, i) => i !== idx);
+        onChange(next.length === 1 ? next[0] : next);
+      };
+
       return (
-        <div 
-          onClick={() => {
-            const input = document.getElementById(`file-input-${field.id}`);
-            if (input) (input as HTMLInputElement).click();
-          }}
-          style={{ 
-            display:'flex', alignItems:'center', gap:'10px', padding:'14px', borderRadius:'10px', 
-            border:'1px dashed var(--border)', cursor:'pointer', background:'rgba(255,255,255,0.02)', 
-            fontSize:'13px', color:'var(--text-3)', transition:'all 0.15s' 
-          }}
-          onMouseEnter={(e) => e.currentTarget.style.borderColor = 'var(--accent)'}
-          onMouseLeave={(e) => e.currentTarget.style.borderColor = 'var(--border)'}
-        >
-          <input 
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <input
             id={`file-input-${field.id}`}
-            type="file" 
-            accept="image/*,video/*,.pdf,.doc,.docx" 
+            type="file"
+            accept="image/*,video/*,.pdf,.doc,.docx"
             multiple
-            style={{ display:'none' }} 
-            onChange={async e => { 
+            style={{ display: 'none' }}
+            onChange={async e => {
               const files = Array.from(e.target.files || []);
               if (files.length > 0) {
-                e.stopPropagation();
-                await onFile(files); 
+                await onFile(files);
               }
-            }} 
+              // reset input so same file can be selected again
+              e.target.value = '';
+            }}
           />
-           {uploading ? <><span className="spinner"/> Uploading to Walrus...</>
-           : Array.isArray(base) && base.length > 0 ? <span style={{color:'#4ade80'}}>✓ {base.length} uploaded - click to replace</span>
-           : base ? <span style={{color:'#4ade80'}}>✓ Uploaded - click to replace</span>
-           : <>📁 Click or drop files</>}
+
+          {/* Preview gallery */}
+          {currentFiles.length > 0 && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
+              {currentFiles.map((blobId, idx) => (
+                <div key={idx} style={{ position: 'relative', borderRadius: '10px', overflow: 'hidden', border: '1px solid var(--border)', width: '100px', height: '100px', flexShrink: 0, background: 'rgba(255,255,255,0.03)' }}>
+                  <img
+                    src={`https://aggregator.walrus-testnet.walrus.space/v1/blobs/${blobId}`}
+                    alt={`Upload ${idx + 1}`}
+                    style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                    onError={e => {
+                      // If not an image, show a generic file icon
+                      (e.currentTarget as HTMLImageElement).style.display = 'none';
+                      const parent = e.currentTarget.parentElement;
+                      if (parent) {
+                        parent.style.display = 'flex';
+                        parent.style.alignItems = 'center';
+                        parent.style.justifyContent = 'center';
+                        parent.style.fontSize = '28px';
+                        parent.setAttribute('data-icon', '📄');
+                      }
+                    }}
+                  />
+                  <button
+                    onClick={() => removeFile(idx)}
+                    title="Remove file"
+                    style={{
+                      position: 'absolute', top: '4px', right: '4px',
+                      width: '20px', height: '20px', borderRadius: '50%',
+                      background: 'rgba(0,0,0,0.7)', border: 'none', cursor: 'pointer',
+                      color: '#fff', fontSize: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontWeight: 700, lineHeight: 1
+                    }}
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
+
+              {/* Add more tile */}
+              <div
+                onClick={triggerInput}
+                style={{
+                  width: '100px', height: '100px', borderRadius: '10px',
+                  border: '1px dashed var(--border)', cursor: 'pointer',
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                  gap: '4px', fontSize: '11px', color: 'var(--text-3)', background: 'rgba(255,255,255,0.02)',
+                  transition: 'all 0.15s', flexShrink: 0
+                }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.color = 'var(--accent-2)'; }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-3)'; }}
+              >
+                <span style={{ fontSize: '20px' }}>+</span>
+                <span>Add more</span>
+              </div>
+            </div>
+          )}
+
+          {/* Drop zone (shown when no files yet or uploading) */}
+          {(currentFiles.length === 0 || uploading) && (
+            <div
+              onClick={currentFiles.length === 0 ? triggerInput : undefined}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '10px', padding: '14px', borderRadius: '10px',
+                border: '1px dashed var(--border)', cursor: currentFiles.length === 0 ? 'pointer' : 'default',
+                background: 'rgba(255,255,255,0.02)', fontSize: '13px', color: 'var(--text-3)', transition: 'all 0.15s'
+              }}
+              onMouseEnter={e => { if (currentFiles.length === 0) e.currentTarget.style.borderColor = 'var(--accent)'; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; }}
+            >
+              {uploading
+                ? <><span className="spinner" /> Uploading to Walrus...</>
+                : <>📁 Click to select files (images, docs, videos)</>}
+            </div>
+          )}
         </div>
       );
+    }
+
     default: return null;
   }
 }
@@ -464,15 +536,22 @@ export default function Home() {
       const { uploadBytesToWalrus } = await import('@/lib/walrus');
       
       const fileArray = Array.isArray(files) ? files : [files];
-      const blobIds = [];
+      const newBlobIds: string[] = [];
       
       for (const file of fileArray) {
         const bytes = new Uint8Array(await file.arrayBuffer());
         const { blobId } = await uploadBytesToWalrus(bytes, 5, address);
-        blobIds.push(blobId);
+        newBlobIds.push(blobId);
       }
       
-      setField(fieldId, blobIds.length === 1 ? blobIds[0] : blobIds);
+      // Append to existing uploads instead of replacing
+      setData(d => {
+        const existing = d[fieldId];
+        const existingArr = Array.isArray(existing) ? existing : (existing && typeof existing === 'string' ? [existing] : []);
+        const combined = [...(existingArr as string[]), ...newBlobIds];
+        return { ...d, [fieldId]: combined.length === 1 ? combined[0] : combined };
+      });
+      setErrors(e => { const n = { ...e }; delete n[fieldId]; return n; });
     } catch (err: any) { 
       setErrors(e => ({ ...e, [fieldId]: err.message || 'File upload failed - try again.' })); 
     }

@@ -4,6 +4,7 @@ import type { FormConfig, SessionField, SessionFieldType } from '@/types/walform
 import { uploadJsonOnChain } from '@/lib/walrus-onchain';
 import { saveAdminConfig } from '@/lib/fields';
 import { motion } from 'framer-motion';
+import { cacheFormId } from '@/lib/form-registry';
 
 function uid() { return Math.random().toString(36).slice(2, 9); }
 
@@ -338,6 +339,8 @@ export function FormBuilderTab({ config, onChange, ownerAddress }: {
       cfg.publishedBlobId = blobId;
       onChange(cfg);
       saveAdminConfig(cfg);
+      // Also cache in form registry so My Forms tab can discover it
+      cacheFormId(ownerAddress, blobId);
       const formUrl = `${window.location.origin}/?form=${blobId}`;
       setPubUrl(formUrl);
       setPubBlobId(blobId);

@@ -395,7 +395,18 @@ export function SubmissionsTab({ ownerAddress, formBlobId: initialFormBlobId }: 
                               <span style={{ color: v ? 'var(--success)' : 'var(--error)', fontWeight: 600 }}>{v ? '- Yes' : '-- No'}</span>
                             ) : Array.isArray(v) ? (
                               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                                {v.map((item, i) => <span key={i} style={{ padding: '2px 8px', borderRadius: '4px', background: 'rgba(255,255,255,0.05)', fontSize: '12px' }}>{item}</span>)}
+                                {v.map((item, i) => {
+                                  if (typeof item === 'string' && /^[A-Za-z0-9_-]{43}$/.test(item)) {
+                                    return (
+                                      <div key={i} style={{ position: 'relative', borderRadius: '12px', overflow: 'hidden', border: '1px solid var(--border)', maxWidth: '200px' }}>
+                                        <a href={getWalrusBlobUrl(item)} target="_blank" rel="noopener noreferrer" style={{ display: 'block' }}>
+                                          <img src={getWalrusBlobUrl(item)} style={{ width: '100%', display: 'block', maxHeight: '200px', objectFit: 'cover' }} onError={(e) => { e.currentTarget.parentElement!.parentElement!.style.display = 'none'; }} />
+                                        </a>
+                                      </div>
+                                    );
+                                  }
+                                  return <span key={i} style={{ padding: '2px 8px', borderRadius: '4px', background: 'rgba(255,255,255,0.05)', fontSize: '12px' }}>{item}</span>;
+                                })}
                               </div>
                             ) : v.toString().startsWith('http') ? (
                               <a href={v.toString()} target="_blank" rel="noopener noreferrer" className="link-premium">
