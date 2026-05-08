@@ -1,10 +1,8 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { useCurrentAccount } from '@mysten/dapp-kit-react';
 import type { FormConfig, SessionField, SessionFieldType } from '@/types/walform';
 import { uploadJsonOnChain } from '@/lib/walrus-onchain';
 import { saveAdminConfig } from '@/lib/fields';
-import { dAppKit } from '@/app/dapp-kit';
 import { motion } from 'framer-motion';
 
 function uid() { return Math.random().toString(36).slice(2, 9); }
@@ -273,11 +271,11 @@ function CustomFieldCreator({ onAdd }: { onAdd: (f: SessionField) => void }) {
 }
 
 // ── Main tab ──────────────────────────────────────────────────────────
-export function FormBuilderTab({ config, onChange }: {
+export function FormBuilderTab({ config, onChange, ownerAddress }: {
   config: FormConfig;
   onChange: (c: FormConfig) => void;
+  ownerAddress: string;
 }) {
-  const account = useCurrentAccount();
   const [publishing, setPublishing] = useState(false);
   const [pubUrl, setPubUrl]         = useState(config.publishedBlobId ? `${typeof window !== 'undefined' ? window.location.origin : ''}/?form=${config.publishedBlobId}` : '');
   const [pubBlobId, setPubBlobId]   = useState(config.publishedBlobId ?? '');
@@ -295,12 +293,10 @@ export function FormBuilderTab({ config, onChange }: {
   }
 
   async function publish() {
-    const connection = dAppKit.stores.$connection.get();
-    if (!connection.isConnected || !connection.account) {
+    if (!ownerAddress) {
       alert('Please connect your wallet first.');
       return;
     }
-    const ownerAddress = connection.account.address;
 
     setPublishing(true);
     try {

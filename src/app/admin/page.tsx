@@ -3,16 +3,15 @@ import { useState, useEffect } from 'react';
 import { useCurrentAccount } from '@mysten/dapp-kit-react';
 import { ConnectButton } from '@mysten/dapp-kit-react/ui';
 import { dAppKit } from '@/app/dapp-kit';
-import { isAdmin, loadAdminConfig, saveAdminConfig, DEFAULT_CONFIG } from '@/lib/fields';
+import { loadAdminConfig, saveAdminConfig, DEFAULT_CONFIG } from '@/lib/fields';
 import type { FormConfig } from '@/types/walform';
 import dynamic from 'next/dynamic';
 import { motion } from 'framer-motion';
 
 const FormBuilderTab = dynamic(() => import('@/components/admin/FormBuilderTab').then(m=>m.FormBuilderTab), { ssr:false });
 const SubmissionsTab = dynamic(() => import('@/components/admin/SubmissionsTab').then(m=>m.SubmissionsTab), { ssr:false });
-const AdminsTab      = dynamic(() => import('@/components/admin/AdminsTab').then(m=>m.AdminsTab), { ssr:false });
 
-type Tab = 'builder' | 'submissions' | 'admins';
+type Tab = 'builder' | 'submissions';
 
 function shorten(a: string) { return `${a.slice(0,6)}…${a.slice(-4)}`; }
 
@@ -36,37 +35,26 @@ export default function AdminPage() {
   const TABS: { key: Tab; label: string; icon: string }[] = [
     { key:'builder',     label:'Form Builder',  icon:'⊞' },
     { key:'submissions', label:'Submissions',   icon:'📋' },
-    { key:'admins',      label:'Admins',        icon:'🔐' },
   ];
 
   // ── Not connected ────────────────────────────────────────────
   if (!account) return (
     <div style={{ minHeight:'100dvh', display:'flex', alignItems:'center', justifyContent:'center', backgroundColor:'var(--bg)', backgroundImage:'radial-gradient(ellipse 80% 40% at 50% 0%, rgba(124,58,237,0.12) 0%, transparent 60%)' }}>
-      <div className="card" style={{ padding:'40px', maxWidth:'400px', width:'100%', textAlign:'center' }}>
-        <div style={{ fontSize:'40px', marginBottom:'16px' }}>🔐</div>
-        <h1 style={{ fontSize:'20px', fontWeight:700, marginBottom:'8px' }}>Admin Panel</h1>
-        <p style={{ fontSize:'13px', color:'var(--text-2)', marginBottom:'24px', lineHeight:1.6 }}>Connect your wallet to access the admin dashboard.</p>
+      <div className="card" style={{ padding:'40px', maxWidth:'420px', width:'100%', textAlign:'center' }}>
+        <div style={{ fontSize:'48px', marginBottom:'16px' }}>🌊</div>
+        <h1 style={{ fontSize:'22px', fontWeight:800, marginBottom:'8px', letterSpacing:'-0.02em' }}>Walform Console</h1>
+        <p style={{ fontSize:'13px', color:'var(--text-2)', marginBottom:'8px', lineHeight:1.7 }}>
+          Connect your wallet to access your personal form builder dashboard.
+        </p>
+        <p style={{ fontSize:'12px', color:'var(--text-3)', marginBottom:'28px', lineHeight:1.6, background:'rgba(124,58,237,0.06)', padding:'10px 14px', borderRadius:'10px', border:'1px solid rgba(124,58,237,0.12)' }}>
+          ✨ Any wallet can create and manage their own forms. Your data is private to your wallet.
+        </p>
         <ConnectButton instance={dAppKit} />
       </div>
     </div>
   );
 
-  // ── Not admin ───────────────────────────────────────────────
-  if (!isAdmin(account.address)) return (
-    <div style={{ minHeight:'100dvh', display:'flex', alignItems:'center', justifyContent:'center', background:'var(--bg)' }}>
-      <div className="card" style={{ padding:'40px', maxWidth:'400px', width:'100%', textAlign:'center' }}>
-        <div style={{ fontSize:'40px', marginBottom:'16px' }}>⛔</div>
-        <h1 style={{ fontSize:'20px', fontWeight:700, marginBottom:'8px' }}>Access Denied</h1>
-        <p style={{ fontSize:'13px', color:'var(--text-2)', marginBottom:'24px', lineHeight:1.6 }}>
-          Your address is not authorized.<br/>
-          <span style={{ fontFamily:'var(--mono)', fontSize:'11px', color:'var(--text-3)' }}>{account.address}</span>
-        </p>
-        <button className="btn btn-secondary" onClick={() => disconnect()}>Disconnect</button>
-      </div>
-    </div>
-  );
-
-  // ── Admin dashboard ─────────────────────────────────────────
+  // ── Admin dashboard — open to all wallets ─────────────────────────────
   return (
     <div style={{ minHeight:'100dvh', backgroundColor:'var(--bg)', position: 'relative' }}>
       {/* Header */}
@@ -124,13 +112,11 @@ export default function AdminPage() {
         </div>
       </header>
 
-
       {/* Content */}
       <main style={{ maxWidth:'1100px', margin:'0 auto', padding:'32px 24px' }}>
         <motion.div key={tab} initial={{ opacity:0, y:8 }} animate={{ opacity:1, y:0 }} transition={{ duration:0.25 }}>
-          {tab === 'builder'     && <FormBuilderTab config={config} onChange={handleConfigChange} />}
-          {tab === 'submissions' && <SubmissionsTab formBlobId={config.publishedBlobId ?? 'default'} />}
-          {tab === 'admins'      && <AdminsTab />}
+          {tab === 'builder'     && <FormBuilderTab config={config} onChange={handleConfigChange} ownerAddress={account.address} />}
+          {tab === 'submissions' && <SubmissionsTab ownerAddress={account.address} formBlobId={config.publishedBlobId} />}
         </motion.div>
       </main>
     </div>
