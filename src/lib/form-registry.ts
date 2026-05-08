@@ -12,7 +12,7 @@ import { publishSubmission } from '@/lib/submission-index';
 
 // Walrus mainnet Blob struct type on Sui
 const WALRUS_BLOB_TYPE =
-  '0x9f992cc2430a1f442ca7a5ca7638169f5d5c00e0221b5bcef8678cb5cef23516::blob::Blob';
+  '0xfdc88f7d7cf30afab2f82e8380d11ee8f70efb90e863d1de8616fae1bb09ea77::blob::Blob';
 
 const FORMS_CACHE_KEY = 'walform:registry:forms';
 const SUBS_CACHE_KEY  = 'walform:registry:subs';

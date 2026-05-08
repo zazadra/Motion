@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { useCurrentAccount } from '@mysten/dapp-kit-react';
+import { useCurrentAccount, useCurrentWallet } from '@mysten/dapp-kit-react';
 import { ConnectButton } from '@mysten/dapp-kit-react/ui';
 import { dAppKit } from '@/app/dapp-kit';
 import { readJsonFromWalrus, getWalrusScanUrl } from '@/lib/walrus';
@@ -36,7 +36,7 @@ function FieldInput({ field, value, onChange, onFile, uploading }: {
     case 'select':
       return (
         <select className="select" value={base||''} onChange={e=>onChange(e.target.value)} style={{ background:'var(--card)', color:'var(--text-1)' }}>
-          <option value="">Select-</option>
+          <option value="">Select Option</option>
           {field.options?.map(o=><option key={o} value={o}>{o}</option>)}
         </select>
       );
@@ -106,7 +106,7 @@ function FieldInput({ field, value, onChange, onFile, uploading }: {
               {currentFiles.map((blobId, idx) => (
                 <div key={idx} style={{ position: 'relative', borderRadius: '10px', overflow: 'hidden', border: '1px solid var(--border)', width: '100px', height: '100px', flexShrink: 0, background: 'rgba(255,255,255,0.03)' }}>
                   <img
-                    src={`https://aggregator.walrus-testnet.walrus.space/v1/blobs/${blobId}`}
+                    src={`https://aggregator.walrus.space/v1/blobs/${blobId}`}
                     alt={`Upload ${idx + 1}`}
                     style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
                     onError={e => {
@@ -158,20 +158,23 @@ function FieldInput({ field, value, onChange, onFile, uploading }: {
           )}
 
           {/* Drop zone (shown when no files yet or uploading) */}
-          {(currentFiles.length === 0 || uploading) && (
+          {!uploading && (
             <div
-              onClick={currentFiles.length === 0 ? triggerInput : undefined}
+              onClick={triggerInput}
               style={{
                 display: 'flex', alignItems: 'center', gap: '10px', padding: '14px', borderRadius: '10px',
-                border: '1px dashed var(--border)', cursor: currentFiles.length === 0 ? 'pointer' : 'default',
+                border: '1px dashed var(--border)', cursor: 'pointer',
                 background: 'rgba(255,255,255,0.02)', fontSize: '13px', color: 'var(--text-3)', transition: 'all 0.15s'
               }}
-              onMouseEnter={e => { if (currentFiles.length === 0) e.currentTarget.style.borderColor = 'var(--accent)'; }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--accent)'; }}
               onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; }}
             >
-              {uploading
-                ? <><span className="spinner" /> Uploading to Walrus...</>
-                : <>📁 Click to select files (images, docs, videos)</>}
+              <>📁 {currentFiles.length > 0 ? 'Add more files...' : 'Click to select files (images, docs, videos)'}</>
+            </div>
+          )}
+          {uploading && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '14px', borderRadius: '10px', background: 'rgba(139, 92, 246, 0.05)', color: 'var(--accent-2)', fontSize: '13px' }}>
+              <span className="spinner" /> Uploading to Walrus...
             </div>
           )}
         </div>
@@ -374,6 +377,7 @@ function FloatingWalrus({ mousePos, isMobile }: { mousePos: { x: number, y: numb
 // -- Main page ------------------------------------------------------
 export default function Home() {
   const account = useCurrentAccount();
+  const wallet = useCurrentWallet();
   const disconnect = () => dAppKit.disconnectWallet();
   const address = account?.address;
 
@@ -578,32 +582,68 @@ export default function Home() {
       return;
     }
 
+    if (!wallet) {
+      setStatus('idle');
+      setErrMsg('Wallet not available. Please reconnect your wallet.');
+      return;
+    }
+
+    const adminWallet = config.publishedBy;
+
     setStatus('signing');
     try {
+      // ── Step 1: Sign a message with wallet (triggers wallet popup) ──────
+      const submissionId = uid();
+      const timestamp = Date.now();
+      const messageText = [
+        'Walform Submission',
+        `Form: ${formBlobId}`,
+        `Submitter: ${address}`,
+        `Timestamp: ${timestamp}`,
+        `ID: ${submissionId}`,
+      ].join('\n');
+
+      const messageBytes = new TextEncoder().encode(messageText);
+      let walletSignature = '';
+      try {
+        const signResult = await wallet.signPersonalMessage(messageBytes);
+        // signResult is { signature: string (base64), bytes: string (base64) }
+        walletSignature = typeof signResult === 'object' && signResult !== null
+          ? (signResult as any).signature ?? ''
+          : '';
+      } catch (signErr: any) {
+        // User rejected in wallet
+        if (signErr?.message?.toLowerCase().includes('reject') || signErr?.code === 4001) {
+          setStatus('idle');
+          setErrMsg('Submission cancelled — you rejected the signature request.');
+          return;
+        }
+        // Other signing error — still proceed but without signature
+        console.warn('Wallet signing failed, proceeding without signature:', signErr);
+      }
+
+      // ── Step 2: Upload submission blob to Walrus ──────────────────────
+      setStatus('submitting');
+
       const submission: Submission = {
-        id: uid(), 
+        id: submissionId,
         formId: formBlobId,
-        formBlobId, 
+        formBlobId,
         data,
         submitterAddress: address,
-        timestamp: Date.now(), 
+        timestamp,
         status: 'pending',
+        // Embed wallet signature for authenticity proof
+        ...(walletSignature ? { walletSignature, signedMessage: messageText } : {}),
       };
 
-      console.log("-- Submitting to form:", formBlobId);
-      console.log("-- Submission data:", submission);
-
-      // Upload submission to Walrus HTTP API.
-      // send_object_to = form creator's wallet => blob object goes to admin's Sui address.
-      // This means getOwnedObjects(admin_wallet) will find it automatically.
-      setStatus('submitting');
       const { uploadJsonToWalrus } = await import('@/lib/walrus');
-      const adminWallet = config.publishedBy;  // wallet that published the form
+      // send_object_to = admin wallet → blob object lands in admin's Sui wallet
+      // → scanOwnedBlobs(adminAddress) finds it cross-browser automatically
       const { blobId } = await uploadJsonToWalrus(submission, 5, adminWallet || undefined);
       submission.blobId = blobId;
-      console.log("- Submission uploaded, blobId:", blobId);
 
-      // Index the blobId in localStorage so admin can discover it (same-browser)
+      // Also index in localStorage for same-browser instant discovery
       addSubId(formBlobId, blobId);
       // Broadcast to any open admin tabs in the same browser
       publishSubmission(blobId, formBlobId);
@@ -630,18 +670,17 @@ export default function Home() {
         <BackgroundParticles isMobile={isMobile} />
         <FloatingWalrus mousePos={mousePos} isMobile={isMobile} />
         <header style={{ 
-          padding:'32px 24px', 
+          padding:'32px 48px', 
           display:'flex', 
           alignItems:'center', 
           justifyContent:'space-between', 
-          maxWidth:'1200px', 
-          margin:'0 auto', 
+          maxWidth:'100%', 
+          margin:'0', 
           width:'100%', 
           zIndex: 20,
           position: 'absolute',
           top: 0,
-          left: '50%',
-          transform: 'translateX(-50%)'
+          left: 0
         }}>
           <div style={{ display:'flex', alignItems:'center', gap:'16px' }}>
             <motion.img 
@@ -711,7 +750,7 @@ export default function Home() {
             }} />
             
             <div style={{ 
-              maxWidth: '1300px', 
+              maxWidth: '1600px', 
               width: '100%', 
               zIndex: 10, 
               position: 'relative',

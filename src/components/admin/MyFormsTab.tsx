@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import type { FormConfig } from '@/types/walform';
 import { getCachedFormIds, getArchivedFormIds, archiveForm } from '@/lib/form-registry';
 import { readJsonFromWalrus } from '@/lib/walrus';
+import { scanOwnedBlobs } from '@/lib/form-registry';
 
 function BlobIdImporter({ onImport }: { onImport: (cfg: FormConfig) => void }) {
   const [open, setOpen] = useState(false);
@@ -69,6 +70,28 @@ export function MyFormsTab({
 }) {
   const [forms, setForms] = useState<FormConfig[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  async function handleSync() {
+    if (!ownerAddress) return;
+    setIsSyncing(true);
+    try {
+      const { forms: chainForms } = await scanOwnedBlobs(ownerAddress);
+      setForms(prev => {
+        const combined = [...prev, ...chainForms];
+        const seen = new Set<string>();
+        return combined.filter(f => {
+          const id = f.publishedBlobId || f.id;
+          if (!id || seen.has(id)) return false;
+          seen.add(id);
+          return true;
+        });
+      });
+    } catch (e) {
+      console.error('Sync failed:', e);
+    }
+    setIsSyncing(false);
+  }
 
   useEffect(() => {
     async function load() {
@@ -119,7 +142,18 @@ export function MyFormsTab({
           <h2 style={{ fontSize: '24px', fontWeight: 800, letterSpacing: '-0.02em', marginBottom: '4px' }}>My Forms</h2>
           <p style={{ fontSize: '14px', color: 'var(--text-2)' }}>Forms you've published, stored by this browser.</p>
         </div>
-        <BlobIdImporter onImport={handleImported} />
+        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+          <button
+            className="btn btn-secondary btn-sm"
+            style={{ gap: '8px', display: 'flex', alignItems: 'center' }}
+            onClick={handleSync}
+            disabled={isSyncing}
+          >
+            {isSyncing ? <span className="spinner" style={{ width: '12px', height: '12px' }} /> : '🔄'}
+            Sync from Chain
+          </button>
+          <BlobIdImporter onImport={handleImported} />
+        </div>
       </div>
 
       {/* Info banner */}

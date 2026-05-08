@@ -1,17 +1,13 @@
 /**
  * Walrus HTTP API - Direct Browser Uploads
- * We use the public Walrus Publisher for static dApps (no backend needed).
+ * Mainnet: publisher.walrus.space + aggregator.walrus.space
  */
 
 import type { WalrusUploadResponse } from '@/types/walform';
 
-export const NETWORK = 'testnet';
-export const WALRUS_AGGREGATOR = 'https://aggregator.walrus-testnet.walrus.space';
-export const WALRUS_PUBLISHER  = 'https://publisher.walrus-testnet.walrus.space';
-
-console.log("NETWORK:", NETWORK);
-console.log("AGGREGATOR:", WALRUS_AGGREGATOR);
-console.log("PUBLISHER:", WALRUS_PUBLISHER);
+export const NETWORK = 'mainnet';
+export const WALRUS_AGGREGATOR = 'https://aggregator.walrus.space';
+export const WALRUS_PUBLISHER  = 'https://publisher.walrus.space';
 
 function parseWalrusResponse(result: Record<string, unknown>): WalrusUploadResponse {
   if (result.newlyCreated) {
@@ -64,18 +60,21 @@ export async function uploadJsonToWalrus<T>(
 
 /**
  * Uploads a file directly to the Walrus Publisher from the browser.
+ * @param sendObjectTo - Sui address to send the resulting Blob object to
  */
-export async function uploadFileToWalrus(file: File, epochs = 1): Promise<WalrusUploadResponse> {
-  const url = `${WALRUS_PUBLISHER}/v1/blobs?epochs=${epochs}`;
+export async function uploadFileToWalrus(
+  file: File,
+  epochs = 1,
+  sendObjectTo?: string
+): Promise<WalrusUploadResponse> {
+  let url = `${WALRUS_PUBLISHER}/v1/blobs?epochs=${epochs}`;
+  if (sendObjectTo) url += `&send_object_to=${sendObjectTo}`;
   const res = await fetch(url, { method: 'PUT', body: file });
-
   if (!res.ok) {
     const errorText = await res.text();
     throw new Error(`Walrus Upload failed (${res.status}): ${errorText}`);
   }
-
-  const result = await res.json();
-  return parseWalrusResponse(result);
+  return parseWalrusResponse(await res.json());
 }
 
 export async function readBlobFromWalrus(blobId: string): Promise<Uint8Array> {

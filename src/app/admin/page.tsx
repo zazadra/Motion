@@ -62,7 +62,7 @@ export default function AdminPage() {
     <div style={{ minHeight:'100dvh', backgroundColor:'var(--bg)', position: 'relative' }}>
       {/* Header */}
       <header style={{ position:'sticky', top:0, zIndex:100, borderBottom:'1px solid var(--border)', backdropFilter:'blur(24px)', background:'rgba(5,6,11,0.8)' }}>
-        <div style={{ maxWidth:'1200px', margin:'0 auto', padding:'0 24px', height:'64px', display:'flex', alignItems:'center', gap:'24px' }}>
+        <div style={{ maxWidth:'100%', padding:'0 48px', height:'64px', display:'flex', alignItems:'center', gap:'24px' }}>
           <a href="/" style={{ display:'flex', alignItems:'center', gap:'16px', textDecoration:'none' }}>
             <img src="/walform-mascot.png" alt="Walform Logo" style={{ width: '48px', height: 'auto', filter: 'drop-shadow(0 0 10px rgba(124,58,237,0.3))' }} />
             <span style={{ fontSize:'24px', fontWeight:900, letterSpacing:'-0.03em', color: '#fff' }}>Walform</span>
@@ -116,7 +116,7 @@ export default function AdminPage() {
       </header>
 
       {/* Content */}
-      <main style={{ maxWidth:'1100px', margin:'0 auto', padding:'32px 24px' }}>
+      <main style={{ maxWidth:'1600px', margin:'0 auto', padding:'32px 48px' }}>
         <motion.div key={tab} initial={{ opacity:0, y:8 }} animate={{ opacity:1, y:0 }} transition={{ duration:0.25 }}>
           {tab === 'forms'       && <MyFormsTab ownerAddress={account.address} onSelectForm={(f) => { handleConfigChange(f); setTab('builder'); }} />}
           {tab === 'builder'     && <FormBuilderTab config={config} onChange={handleConfigChange} ownerAddress={account.address} />}

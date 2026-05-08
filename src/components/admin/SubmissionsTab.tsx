@@ -392,11 +392,11 @@ export function SubmissionsTab({ ownerAddress, formBlobId: initialFormBlobId }: 
                           </span>
                           <div style={{ color: 'var(--text-1)', fontSize: '14px', wordBreak: 'break-word', lineHeight: 1.6 }}>
                             {typeof v === 'boolean' ? (
-                              <span style={{ color: v ? 'var(--success)' : 'var(--error)', fontWeight: 600 }}>{v ? '- Yes' : '-- No'}</span>
+                              <span style={{ color: v ? 'var(--success)' : 'var(--error)', fontWeight: 600 }}>{v ? 'Yes' : 'No'}</span>
                             ) : Array.isArray(v) ? (
                               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
                                 {v.map((item, i) => {
-                                  if (typeof item === 'string' && /^[A-Za-z0-9_-]{43}$/.test(item)) {
+                                  if (typeof item === 'string' && /^[A-Za-z0-9_-]{43,44}$/.test(item)) {
                                     return (
                                       <div key={i} style={{ position: 'relative', borderRadius: '12px', overflow: 'hidden', border: '1px solid var(--border)', maxWidth: '200px' }}>
                                         <a href={getWalrusBlobUrl(item)} target="_blank" rel="noopener noreferrer" style={{ display: 'block' }}>
@@ -412,7 +412,7 @@ export function SubmissionsTab({ ownerAddress, formBlobId: initialFormBlobId }: 
                               <a href={v.toString()} target="_blank" rel="noopener noreferrer" className="link-premium">
                                 {v.toString()} <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ marginLeft: 4 }}><path d="M7 17L17 7M7 7h10v10"/></svg>
                               </a>
-                            ) : (typeof v === 'string' && /^[A-Za-z0-9_-]{43}$/.test(v)) ? (
+                            ) : (typeof v === 'string' && /^[A-Za-z0-9_-]{43,44}$/.test(v)) ? (
                               <div style={{ marginTop: '4px' }}>
                                 <a href={getWalrusBlobUrl(v)} target="_blank" rel="noopener noreferrer" className="link-premium" style={{ marginBottom: '12px', display: 'inline-flex' }}>
                                   View Asset <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ marginLeft: 4 }}><path d="M7 17L17 7M7 7h10v10"/></svg>
@@ -422,7 +422,7 @@ export function SubmissionsTab({ ownerAddress, formBlobId: initialFormBlobId }: 
                                 </div>
                               </div>
                             ) : (
-                              <span style={{ fontWeight: 500 }}>{v.toString() || <em style={{ color: 'var(--text-3)', fontWeight: 400 }}>-</em>}</span>
+                               <span style={{ fontWeight: 500 }}>{v.toString() || <em style={{ color: 'var(--text-3)', fontWeight: 400 }}>Empty</em>}</span>
                             )}
                           </div>
                         </div>
@@ -469,7 +469,7 @@ export function SubmissionsTab({ ownerAddress, formBlobId: initialFormBlobId }: 
                         {s.blobId && (
                           <a href={getWalrusScanUrl(s.blobId)} target="_blank" rel="noopener noreferrer"
                             className="btn btn-secondary btn-sm" style={{ textDecoration: 'none', width: 'auto', display: 'flex', alignItems: 'center', borderRadius: '12px' }}>
-                            Scanner --
+                            Walrus Scan
                           </a>
                         )}
                       </div>

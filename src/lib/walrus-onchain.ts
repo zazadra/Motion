@@ -12,6 +12,9 @@ import { NETWORK } from '@/lib/walrus';
 let suiClient: SuiJsonRpcClient | null = null;
 let walrusClient: WalrusClient | null = null;
 
+const WALRUS_MAINNET_SYSTEM_ID = '0x2134d52768ea07e8c43570ef975eb3e4c27a39fa6396bef985b5abc58d03ddd2';
+const WALRUS_MAINNET_PACKAGE_ID = '0xfdc88f7d7cf30afab2f82e8380d11ee8f70efb90e863d1de8616fae1bb09ea77';
+
 function initClients() {
   if (!suiClient) {
     console.log("ON-CHAIN SYNC: Initializing with", NETWORK);
@@ -21,7 +24,12 @@ function initClients() {
     });
   }
   if (!walrusClient) {
-    walrusClient = new WalrusClient({ network: NETWORK as any, suiClient: suiClient as any });
+    const config: any = { network: NETWORK as any, suiClient: suiClient as any };
+    if (NETWORK === 'mainnet') {
+      config.packageId = WALRUS_MAINNET_PACKAGE_ID;
+      config.systemObjectId = WALRUS_MAINNET_SYSTEM_ID;
+    }
+    walrusClient = new WalrusClient(config);
   }
 }
 
