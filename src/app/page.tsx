@@ -655,8 +655,8 @@ export default function Home() {
           const provider = (window as any).suiWallet || (window as any).slush;
           if (provider) {
             await (provider.signAndExecuteTransactionBlock || provider.signAndExecuteTransaction).call(provider, {
-              transactionBlock: txb,
               transaction: txb,
+              transactionBlock: txb,
             });
             console.log('[Sui] Submission object created successfully.');
           }

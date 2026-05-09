@@ -347,8 +347,8 @@ export function FormBuilderTab({ config, onChange, ownerAddress }: {
           const provider = (window as any).suiWallet || (window as any).slush;
           if (provider) {
             await (provider.signAndExecuteTransactionBlock || provider.signAndExecuteTransaction).call(provider, {
-              transactionBlock: txb,
               transaction: txb,
+              transactionBlock: txb,
             });
             console.log('[Sui] Form object created successfully.');
           }

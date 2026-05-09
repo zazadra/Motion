@@ -5,11 +5,11 @@
 
 import type { WalrusUploadResponse } from '@/types/walform';
 import { dAppKit } from '@/app/dapp-kit';
-import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from '@mysten/sui/jsonRpc';
+import { SuiClient, getFullnodeUrl } from '@mysten/sui/client';
 import { WalrusClient } from '@mysten/walrus';
 import { NETWORK } from '@/lib/walrus';
 
-let suiClient: SuiJsonRpcClient | null = null;
+let suiClient: SuiClient | null = null;
 let walrusClient: WalrusClient | null = null;
 
 const WALRUS_MAINNET_SYSTEM_ID = '0x2134d52768ea07e8c43570ef975eb3e4c27a39fa6396bef985b5abc58d03ddd2';
@@ -21,9 +21,8 @@ export const WALFORM_PACKAGE_ID: string = '0x56d0c64c632b581c6efc3fa7b6f058f3d1c
 function initClients() {
   if (!suiClient) {
     console.log("ON-CHAIN SYNC: Initializing with", NETWORK);
-    suiClient = new SuiJsonRpcClient({ 
-      url: getJsonRpcFullnodeUrl(NETWORK as any), 
-      network: NETWORK as any 
+    suiClient = new SuiClient({ 
+      url: getFullnodeUrl(NETWORK as any)
     });
   }
   if (!walrusClient) {
@@ -89,17 +88,17 @@ export async function uploadOnChain(
     }
     if (!provider) provider = dAppKit;
 
-    const signAndExecute = provider.signAndExecuteTransactionBlock || 
-                           provider.signAndExecuteTransaction || 
-                           (provider.features?.['sui:signAndExecuteTransactionBlock']?.signAndExecuteTransactionBlock) ||
-                           (provider.features?.['sui:signAndExecuteTransaction']?.signAndExecuteTransaction);
+    const signAndExecute = provider.signAndExecuteTransaction || 
+                           provider.signAndExecuteTransactionBlock ||
+                           (provider.features?.['sui:signAndExecuteTransaction']?.signAndExecuteTransaction) ||
+                           (provider.features?.['sui:signAndExecuteTransactionBlock']?.signAndExecuteTransactionBlock);
 
     console.log('[Walrus] Requesting wallet approval for Registration...');
     let registerResult: any = null;
     try {
       registerResult = await signAndExecute.call(provider, { 
-        transactionBlock: registerTx as any,
         transaction: registerTx as any,
+        transactionBlock: registerTx as any,
         blob: blob,
         options: { showEffects: true }
       });
@@ -144,8 +143,8 @@ export async function uploadOnChain(
     let certResult: any = null;
     try {
       certResult = await signAndExecute.call(provider, { 
-        transactionBlock: certTx as any,
         transaction: certTx as any,
+        transactionBlock: certTx as any,
         blob: blob, 
         options: { showEffects: true }
       });
@@ -173,14 +172,14 @@ export async function uploadJsonOnChain<T>(data: T, ownerAddress: string, epochs
  * Creates a Form object on Sui to index the Walrus blob.
  */
 export async function createFormObject(formId: string, blobId: string, ownerAddress: string) {
-  const { TransactionBlock } = await import('@mysten/sui/transactions');
-  const txb = new TransactionBlock();
+  const { Transaction } = await import('@mysten/sui/transactions');
+  const txb = new Transaction();
   txb.moveCall({
     target: `${WALFORM_PACKAGE_ID}::walform::create_form`,
     arguments: [
-      txb.pure(formId),
-      txb.pure(blobId),
-      txb.pure(Date.now()),
+      txb.pure.string(formId),
+      txb.pure.string(blobId),
+      txb.pure.u64(Date.now()),
     ],
   });
   return txb;
@@ -190,16 +189,16 @@ export async function createFormObject(formId: string, blobId: string, ownerAddr
  * Creates a Submission object on Sui and transfers it to the form owner.
  */
 export async function createSubmissionObject(formId: string, blobId: string, status: string, owner: string) {
-  const { TransactionBlock } = await import('@mysten/sui/transactions');
-  const txb = new TransactionBlock();
+  const { Transaction } = await import('@mysten/sui/transactions');
+  const txb = new Transaction();
   txb.moveCall({
     target: `${WALFORM_PACKAGE_ID}::walform::register_submission`,
     arguments: [
-      txb.pure(formId),
-      txb.pure(blobId),
-      txb.pure(Date.now()),
-      txb.pure(status),
-      txb.pure(owner),
+      txb.pure.string(formId),
+      txb.pure.string(blobId),
+      txb.pure.u64(Date.now()),
+      txb.pure.string(status),
+      txb.pure.address(owner),
     ],
   });
   return txb;

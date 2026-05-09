@@ -110,11 +110,11 @@ export async function scanOwnedBlobs(wallet: string): Promise<{
   forms: FormConfig[];
   submissions: Submission[];
 }> {
-  const { SuiJsonRpcClient, getJsonRpcFullnodeUrl } = await import('@mysten/sui/jsonRpc');
+  const { SuiClient, getFullnodeUrl } = await import('@mysten/sui/client');
   const { NETWORK } = await import('@/lib/walrus');
-  const client = new SuiJsonRpcClient({
-    url: getJsonRpcFullnodeUrl(NETWORK as any),
-    network: NETWORK as any,
+  
+  const client = new SuiClient({ 
+    url: getFullnodeUrl(NETWORK as any)
   });
 
   const newBlobIds: string[] = [];
