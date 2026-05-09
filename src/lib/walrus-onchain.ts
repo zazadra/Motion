@@ -5,11 +5,11 @@
 
 import type { WalrusUploadResponse } from '@/types/walform';
 import { dAppKit } from '@/app/dapp-kit';
-import { SuiClient, getFullnodeUrl } from '@mysten/sui/client';
+import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from '@mysten/sui/jsonRpc';
 import { WalrusClient } from '@mysten/walrus';
 import { NETWORK } from '@/lib/walrus';
 
-let suiClient: SuiClient | null = null;
+let suiClient: SuiJsonRpcClient | null = null;
 let walrusClient: WalrusClient | null = null;
 
 const WALRUS_MAINNET_SYSTEM_ID = '0x2134d52768ea07e8c43570ef975eb3e4c27a39fa6396bef985b5abc58d03ddd2';
@@ -21,8 +21,9 @@ export const WALFORM_PACKAGE_ID: string = '0x56d0c64c632b581c6efc3fa7b6f058f3d1c
 function initClients() {
   if (!suiClient) {
     console.log("ON-CHAIN SYNC: Initializing with", NETWORK);
-    suiClient = new SuiClient({ 
-      url: getFullnodeUrl(NETWORK as any)
+    suiClient = new SuiJsonRpcClient({ 
+      url: getJsonRpcFullnodeUrl(NETWORK as any),
+      network: NETWORK as any
     });
   }
   if (!walrusClient) {
