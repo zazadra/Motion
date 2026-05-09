@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 export const runtime = 'edge';
 
 const PUBLISHER_POOL = [
+  'https://publisher-mainnet.walrus.nami.cloud',
   'https://publisher.walrus-mainnet.mystenlabs.com',
   'https://publisher.walrus.space',
   'https://walrus-mainnet-publisher.staketab.org',
@@ -11,7 +12,6 @@ const PUBLISHER_POOL = [
   'https://publisher.walrus-mainnet.nodeinfra.com',
   'https://publisher.walrus-mainnet.decentnode.com',
   'https://publisher.walrus-mainnet.blockscope.net',
-  'https://walrus-publisher-mainnet.nodeist.net'
 ];
 
 export async function POST(req: NextRequest) {
@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
     const epochs = searchParams.get('epochs') || '1';
     const sendObjectTo = searchParams.get('send_object_to');
 
-    // Buffer the request into memory to allow retries across different providers
+    // Buffer the request
     const buffer = await req.arrayBuffer();
     
     if (buffer.byteLength === 0) {
@@ -29,34 +29,28 @@ export async function POST(req: NextRequest) {
 
     const MAX_SIZE = 4.5 * 1024 * 1024;
     if (buffer.byteLength > MAX_SIZE) { 
-      return NextResponse.json({ error: `File too large for backend relay (${(buffer.byteLength / 1024 / 1024).toFixed(2)}MB). Limit is 4.5MB.` }, { status: 413 });
+      return NextResponse.json({ error: `File too large (${(buffer.byteLength / 1024 / 1024).toFixed(2)}MB). Limit 4.5MB.` }, { status: 413 });
     }
 
     let lastError = '';
 
     // Provider Rotation Loop
     for (const publisherUrl of PUBLISHER_POOL) {
-      // Build URL - only add epochs if > 1 or specific parameters are needed
-      let url = `${publisherUrl}/v1/blobs`;
-      const queryParams = new URLSearchParams();
-      if (epochs && epochs !== '1') queryParams.append('epochs', epochs);
-      if (sendObjectTo) queryParams.append('send_object_to', sendObjectTo);
+      // Build URL - added deletable=true as it's often more compatible for free tiers
+      let url = `${publisherUrl}/v1/blobs?deletable=true`;
+      if (epochs && epochs !== '1') url += `&epochs=${epochs}`;
+      if (sendObjectTo) url += `&send_object_to=${sendObjectTo}`;
       
-      const queryString = queryParams.toString();
-      if (queryString) url += `?${queryString}`;
-
-      console.log(`[Backend Relay] [TRY] ${publisherUrl} | Size: ${buffer.byteLength}`);
+      console.log(`[Backend Relay] [TRY] ${publisherUrl}`);
 
       try {
         const res = await fetch(url, {
           method: 'PUT',
           headers: {
-            'Content-Type': 'application/octet-stream',
             'User-Agent': 'Mozilla/5.0 (WalForm Relay)',
           },
-          // Using Uint8Array is often more compatible than raw ArrayBuffer in fetch
           body: new Uint8Array(buffer),
-          signal: AbortSignal.timeout(25000) 
+          signal: AbortSignal.timeout(15000) // Faster rotation
         });
 
         if (!res.ok) {
