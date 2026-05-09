@@ -559,27 +559,27 @@ export default function Home() {
     }
     setFileUploading(u => ({ ...u, [fieldId]: true }));
     try {
-      const { queueFile } = await import('@/lib/local-storage');
+      const { uploadBytesToWalrus } = await import('@/lib/walrus');
       
       const fileArray = Array.isArray(files) ? files : [files];
-      const newLocalIds: string[] = [];
+      const newBlobIds: string[] = [];
       
       for (const file of fileArray) {
-        // Queue file locally instead of uploading immediately
-        const localId = await queueFile(address, file);
-        newLocalIds.push(localId);
+        // Direct backend relay upload
+        const result = await uploadBytesToWalrus(file, 3);
+        newBlobIds.push(result.blobId);
       }
       
       // Append to existing uploads instead of replacing
       setData(d => {
         const existing = d[fieldId];
         const existingArr = Array.isArray(existing) ? existing : (existing && typeof existing === 'string' ? [existing] : []);
-        const combined = [...(existingArr as string[]), ...newLocalIds];
+        const combined = [...(existingArr as string[]), ...newBlobIds];
         return { ...d, [fieldId]: combined.length === 1 ? combined[0] : combined };
       });
       setErrors(e => { const n = { ...e }; delete n[fieldId]; return n; });
     } catch (err: any) { 
-      setErrors(e => ({ ...e, [fieldId]: err.message || 'File queueing failed - try again.' })); 
+      setErrors(e => ({ ...e, [fieldId]: err.message || 'File upload failed - try again.' })); 
     }
     setFileUploading(u => ({ ...u, [fieldId]: false }));
   }
@@ -647,9 +647,9 @@ export default function Home() {
         console.warn('Wallet signing failed, proceeding without signature:', signErr);
       }
 
-      // ── Step 2: Save submission to IndexedDB locally ──────────────────────
+      // ── Step 2: Save submission to Walrus Mainnet ──────────────────────
       setStatus('submitting');
-      setSubmitMsg('Securing submission locally...');
+      setSubmitMsg('Publishing to Walrus Mainnet...');
 
       const submission: Submission = {
         id: submissionId,
@@ -663,19 +663,19 @@ export default function Home() {
         ...(walletSignature ? { walletSignature, signedMessage: messageText } : {}),
       };
 
-      const { queueSubmission } = await import('@/lib/local-storage');
+      const { uploadJsonToWalrus } = await import('@/lib/walrus');
       const targetAdmin = adminWallet || (config.admins && config.admins[0]) || '';
       
-      const localSubId = await queueSubmission(
-        address,
-        formBlobId,
+      const { blobId } = await uploadJsonToWalrus(
         submission,
-        targetAdmin
+        5,
+        targetAdmin,
+        (p) => {
+          setSubmitMsg(p.message || 'Publishing...');
+        }
       );
 
-      // We do NOT block on uploading to Walrus anymore!
-      
-      setSubmittedBlobId('local_pending'); // Used to show the success screen
+      setSubmittedBlobId(blobId);
       setStatus('success');
     } catch (e: unknown) {
       setErrMsg(e instanceof Error ? e.message : 'Upload failed.');
@@ -1304,12 +1304,6 @@ export default function Home() {
               <span style={{ fontSize:'24px', fontWeight:900, letterSpacing:'-0.03em', color: '#fff' }}>Walform</span>
             </a>
             <div style={{ display:'flex', alignItems:'center', gap:'16px' }}>
-              {syncMessage && (
-                <div style={{ fontSize: '12px', color: 'var(--accent-2)', background: 'rgba(124,58,237,0.1)', padding: '6px 12px', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '8px', border: '1px solid rgba(124,58,237,0.2)' }}>
-                  <span className="spinner" style={{ width: '12px', height: '12px', borderTopColor: 'var(--accent-2)' }} />
-                  {syncMessage}
-                </div>
-              )}
               {account ? (
                 <>
                   <button className="addr-chip" onClick={() => { navigator.clipboard.writeText(account.address); setWCopied(true); setTimeout(()=>setWCopied(false),1800); }} 
