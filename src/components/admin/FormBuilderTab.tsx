@@ -278,6 +278,7 @@ export function FormBuilderTab({ config, onChange, ownerAddress }: {
   ownerAddress: string;
 }) {
   const [publishing, setPublishing] = useState(false);
+  const [pubMsg, setPubMsg]         = useState('');
   const [pubUrl, setPubUrl]         = useState(config.publishedBlobId ? `${typeof window !== 'undefined' ? window.location.origin : ''}/?form=${config.publishedBlobId}` : '');
   const [pubBlobId, setPubBlobId]   = useState(config.publishedBlobId ?? '');
   const [copied, setCopied]         = useState(false);
@@ -300,6 +301,7 @@ export function FormBuilderTab({ config, onChange, ownerAddress }: {
     }
 
     setPublishing(true);
+    setPubMsg('Preparing form configuration...');
     try {
       // Deep-clone fields and ensure options are preserved
       // Detailed logging for verification
@@ -334,7 +336,13 @@ export function FormBuilderTab({ config, onChange, ownerAddress }: {
       };
 
       console.log("-- Final JSON payload:", cfg);
-      const { blobId } = await uploadJsonOnChain(cfg, ownerAddress);
+      const { blobId } = await uploadJsonOnChain(
+        cfg, 
+        ownerAddress, 
+        1, 
+        undefined, 
+        (p: any) => setPubMsg(p.message)
+      );
       
       cfg.publishedBlobId = blobId;
 
@@ -443,7 +451,7 @@ export function FormBuilderTab({ config, onChange, ownerAddress }: {
         </p>
         <button className="btn btn-primary btn-lg" onClick={publish} disabled={publishing}>
           {publishing
-            ? <><span className="spinner" /> Publishing to Walrus...</>
+            ? <><span className="spinner" /> {pubMsg || 'Publishing to Walrus...'}</>
             : '✍️ Sign & Publish Form'}
         </button>
 

@@ -5,8 +5,28 @@
 
 import type { WalrusUploadResponse } from '@/types/walform';
 
-export const NETWORK = 'mainnet'; // Sui remains on mainnet
+export const NETWORK = 'mainnet'; 
 export const WALRUS_AGGREGATOR = 'https://wal-aggregator-mainnet.staketab.org';
+
+// Walrus Mainnet Publisher Pool
+export const PUBLISHER_POOL = [
+  'https://walrus-mainnet-publisher-1.staketab.org:443',
+  'https://publisher.walrus-mainnet.mystenlabs.com',
+  'https://walrus-publisher-mainnet.mystenlabs.com',
+  'https://publisher.mainnet.walrus.space',
+  'https://publisher.walrus-mainnet.nodeinfra.com',
+  'https://publisher.walrus-mainnet.decentnode.com',
+  'https://publisher.walrus-mainnet.blockscope.net',
+  'https://walrus-mainnet-publisher.chainode.tech'
+];
+
+export type UploadStatus = 'pending' | 'uploading' | 'retrying' | 'queued' | 'success' | 'failed';
+export interface UploadProgress {
+  status: UploadStatus;
+  provider?: string;
+  attempt?: number;
+  message?: string;
+}
 
 function parseWalrusResponse(result: Record<string, unknown>): WalrusUploadResponse {
   if (result.newlyCreated) {
@@ -29,57 +49,145 @@ function parseWalrusResponse(result: Record<string, unknown>): WalrusUploadRespo
 }
 
 /**
- * Core upload function using the public Publisher.
- * @param sendObjectTo - Sui address to send the resulting Blob object to (for on-chain ownership)
+ * Health check: verify if a provider is responsive.
+ */
+async function checkHealth(provider: string): Promise<boolean> {
+  try {
+    const res = await fetch(provider, { method: 'HEAD', signal: AbortSignal.timeout(3000) });
+    return res.status < 500;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Core upload function with Multi-Provider Fallback and Retries.
  */
 export async function uploadBytesToWalrus(
   data: Uint8Array | string,
   epochs = 5,
-  sendObjectTo?: string
+  sendObjectTo?: string,
+  onProgress?: (progress: UploadProgress) => void
 ): Promise<WalrusUploadResponse> {
-  let url = `/api/walrus/upload?epochs=${epochs}`;
-  if (sendObjectTo) url += `&send_object_to=${sendObjectTo}`;
-  
   const body = typeof data === 'string' ? new TextEncoder().encode(data) : data;
+  const startTime = Date.now();
+  let lastError: string = '';
+
+  for (const provider of PUBLISHER_POOL) {
+    const providerName = new URL(provider).hostname;
+    
+    // Quick health check
+    onProgress?.({ status: 'uploading', provider: providerName, message: `Checking health of ${providerName}...` });
+    const isHealthy = await checkHealth(provider);
+    if (!isHealthy) {
+      console.warn(`[Walrus] Skipping unhealthy provider: ${providerName}`);
+      continue;
+    }
+
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      try {
+        const statusMsg = attempt > 1 
+          ? `Retrying with ${providerName} (Attempt ${attempt})...` 
+          : `Uploading to ${providerName}...`;
+        
+        onProgress?.({ status: attempt > 1 ? 'retrying' : 'uploading', provider: providerName, attempt, message: statusMsg });
+
+        let url = `/api/walrus/upload?epochs=${epochs}&publisher=${encodeURIComponent(provider)}`;
+        if (sendObjectTo) url += `&send_object_to=${sendObjectTo}`;
+
+        const res = await fetch(url, { 
+          method: 'POST', 
+          body: body as any,
+          signal: AbortSignal.timeout(45000) // 45s per attempt
+        });
+
+        if (!res.ok) {
+          const text = await res.text();
+          throw new Error(text);
+        }
+
+        const result = await res.json();
+        const duration = Date.now() - startTime;
+        console.log(`[Walrus] SUCCESS! Provider: ${providerName}, Duration: ${duration}ms`);
+        onProgress?.({ status: 'success', provider: providerName, message: 'Upload successful!' });
+        return parseWalrusResponse(result);
+
+      } catch (err: any) {
+        lastError = err.message || 'Unknown error';
+        console.warn(`[Walrus] [${providerName}] Attempt ${attempt} failed: ${lastError}`);
+        
+        if (attempt < 2) {
+          const delay = 1000 * attempt; // 1s, 2s backoff
+          await new Promise(r => setTimeout(r, delay));
+        }
+      }
+    }
+  }
+
+  // If we reach here, all providers failed
+  const errorMsg = `All providers failed. Last error: ${lastError}`;
+  onProgress?.({ status: 'failed', message: errorMsg });
   
-  // POST to our Next.js API route which proxies the PUT request to Walrus
-  const res = await fetch(url, { method: 'POST', body: body as any });
-  
-  if (!res.ok) throw new Error(`Upload failed (${res.status}): ${await res.text()}`);
-  return parseWalrusResponse(await res.json());
+  // Local Persistence Logic for JSON data
+  if (typeof data === 'string' || (data instanceof Uint8Array && data.length < 1024 * 512)) {
+    try {
+      const queue = JSON.parse(localStorage.getItem('walform_upload_queue') || '[]');
+      queue.push({
+        data: typeof data === 'string' ? data : Array.from(data),
+        epochs,
+        sendObjectTo,
+        timestamp: Date.now()
+      });
+      localStorage.setItem('walform_upload_queue', JSON.stringify(queue));
+      onProgress?.({ status: 'queued', message: 'Persistent storage failed. Data queued for local retry.' });
+    } catch (e) {
+      console.error('Failed to queue upload locally:', e);
+    }
+  }
+
+  throw new Error(errorMsg);
 }
 
-/**
- * Upload JSON directly to Walrus.
- * @param sendObjectTo - Sui address to send the resulting Blob object to (for on-chain ownership)
- */
 export async function uploadJsonToWalrus<T>(
   data: T,
   epochs = 5,
-  sendObjectTo?: string
+  sendObjectTo?: string,
+  onProgress?: (progress: UploadProgress) => void
 ): Promise<WalrusUploadResponse> {
-  return uploadBytesToWalrus(JSON.stringify(data), epochs, sendObjectTo);
+  return uploadBytesToWalrus(JSON.stringify(data), epochs, sendObjectTo, onProgress);
 }
 
-/**
- * Uploads a file directly to the Walrus Publisher from the browser.
- * @param sendObjectTo - Sui address to send the resulting Blob object to
- */
 export async function uploadFileToWalrus(
   file: File,
   epochs = 1,
-  sendObjectTo?: string
+  sendObjectTo?: string,
+  onProgress?: (progress: UploadProgress) => void
 ): Promise<WalrusUploadResponse> {
-  let url = `/api/walrus/upload?epochs=${epochs}`;
-  if (sendObjectTo) url += `&send_object_to=${sendObjectTo}`;
-  
-  const res = await fetch(url, { method: 'POST', body: file });
-  
-  if (!res.ok) {
-    const errorText = await res.text();
-    throw new Error(`Walrus Upload failed (${res.status}): ${errorText}`);
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  return uploadBytesToWalrus(bytes, epochs, sendObjectTo, onProgress);
+}
+
+/**
+ * Background Queue Processor
+ */
+export async function processUploadQueue() {
+  const queue = JSON.parse(localStorage.getItem('walform_upload_queue') || '[]');
+  if (queue.length === 0) return;
+
+  console.log(`[Walrus] Processing ${queue.length} items from local queue...`);
+  const newQueue = [];
+
+  for (const item of queue) {
+    try {
+      const data = Array.isArray(item.data) ? new Uint8Array(item.data) : item.data;
+      await uploadBytesToWalrus(data, item.epochs, item.sendObjectTo);
+      console.log('[Walrus] Successfully flushed queued item.');
+    } catch {
+      newQueue.push(item); // Keep in queue
+    }
   }
-  return parseWalrusResponse(await res.json());
+
+  localStorage.setItem('walform_upload_queue', JSON.stringify(newQueue));
 }
 
 export async function readBlobFromWalrus(blobId: string): Promise<Uint8Array> {

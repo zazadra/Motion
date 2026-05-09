@@ -50,7 +50,8 @@ export async function uploadOnChain(
   data: any,
   ownerAddress: string,
   epochs = 1,
-  targetOwner?: string
+  targetOwner?: string,
+  onProgress?: (progress: any) => void
 ): Promise<WalrusUploadResponse> {
   
   if (!ownerAddress) throw new Error("Wallet not connected");
@@ -68,20 +69,25 @@ export async function uploadOnChain(
   const client = getWalrusClient();
 
   try {
-    console.log('[Walrus] Uploading via HTTP Publisher API to avoid CORS and Node failures...');
-    // The publisher handles registration, storage, certification, and transfers the Blob to finalOwner
+    console.log('[Walrus] Uploading via Resilient Multi-Provider Proxy...');
     const { uploadBytesToWalrus } = await import('@/lib/walrus');
-    const response = await uploadBytesToWalrus(bytes, epochs, targetOwner || ownerAddress);
+    const response = await uploadBytesToWalrus(bytes, epochs, targetOwner || ownerAddress, onProgress);
     console.log('[Walrus] Upload Success:', response.blobId);
     return response;
   } catch (err: any) {
     console.error("UPLOAD ERROR DETAILS:", err);
-    throw new Error(`Walrus HTTP Publisher failed: ${err.message}`);
+    throw new Error(err.message || "Walrus Upload failed after trying all providers.");
   }
 }
 
-export async function uploadJsonOnChain<T>(data: T, ownerAddress: string, epochs = 1, targetOwner?: string) {
-  return uploadOnChain(data, ownerAddress, epochs, targetOwner);
+export async function uploadJsonOnChain<T>(
+  data: T, 
+  ownerAddress: string, 
+  epochs = 1, 
+  targetOwner?: string,
+  onProgress?: (progress: any) => void
+) {
+  return uploadOnChain(data, ownerAddress, epochs, targetOwner, onProgress);
 }
 
 /**

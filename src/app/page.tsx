@@ -17,12 +17,13 @@ function uid() { return Math.random().toString(36).slice(2, 10); }
 function shorten(a: string) { return `${a.slice(0,6)}-${a.slice(-4)}`; }
 
 // -- Single field renderer ------------------------------------------
-function FieldInput({ field, value, onChange, onFile, uploading }: {
+function FieldInput({ field, value, onChange, onFile, uploading, progressMsg }: {
   field: SessionField;
   value: string | string[] | boolean;
   onChange: (v: string | string[] | boolean) => void;
   onFile: (f: File | File[]) => Promise<void>;
   uploading: boolean;
+  progressMsg?: string;
 }) {
   const base = value as string;
   switch (field.type) {
@@ -174,7 +175,7 @@ function FieldInput({ field, value, onChange, onFile, uploading }: {
           )}
           {uploading && (
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '14px', borderRadius: '10px', background: 'rgba(139, 92, 246, 0.05)', color: 'var(--accent-2)', fontSize: '13px' }}>
-              <span className="spinner" /> Uploading to Walrus...
+              <span className="spinner" /> {progressMsg || 'Uploading to Walrus...'}
             </div>
           )}
         </div>
@@ -399,11 +400,32 @@ export default function Home() {
   const [errors, setErrors]     = useState<Record<string,string>>({});
 
   const [status, setStatus]     = useState<'idle'|'signing'|'submitting'|'success'|'error'>('idle');
+  const [submitMsg, setSubmitMsg] = useState('');
+  const [fileUploadMsg, setFileUploadMsg] = useState<Record<string, string>>({});
   const [submittedBlobId, setSubmittedBlobId] = useState('');
   const [errMsg, setErrMsg]     = useState('');
   const [wCopied, setWCopied]   = useState(false);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [currentStep, setCurrentStep] = useState(0);
+
+  // Background: Auto-process upload queue on mount
+  useEffect(() => {
+    const { processUploadQueue } = require('@/lib/walrus');
+    // Initial delay to not interfere with page load
+    const timer = setTimeout(() => {
+      processUploadQueue((p: any) => console.log('[Queue Processor]', p.message));
+    }, 5000);
+    
+    // Periodically check every 5 minutes
+    const interval = setInterval(() => {
+      processUploadQueue((p: any) => console.log('[Queue Processor]', p.message));
+    }, 5 * 60 * 1000);
+
+    return () => {
+      clearTimeout(timer);
+      clearInterval(interval);
+    };
+  }, []);
 
   // Track mouse for hero parallax
   useEffect(() => {
@@ -543,7 +565,13 @@ export default function Home() {
       const newBlobIds: string[] = [];
       
       for (const file of fileArray) {
-        const { blobId } = await uploadOnChain(file, address, 1);
+        const { blobId } = await uploadOnChain(
+          file, 
+          address, 
+          1, 
+          undefined, 
+          (p: any) => setFileUploadMsg(prev => ({ ...prev, [fieldId]: p.message }))
+        );
         newBlobIds.push(blobId);
       }
       
@@ -626,6 +654,7 @@ export default function Home() {
 
       // ── Step 2: Upload submission blob to Walrus ──────────────────────
       setStatus('submitting');
+      setSubmitMsg('Preparing submission...');
 
       const submission: Submission = {
         id: submissionId,
@@ -640,7 +669,13 @@ export default function Home() {
       };
 
       const { uploadOnChain } = await import('@/lib/walrus-onchain');
-      const { blobId } = await uploadOnChain(JSON.stringify(submission), address, 5, adminWallet || undefined);
+      const { blobId } = await uploadOnChain(
+        JSON.stringify(submission), 
+        address, 
+        5, 
+        adminWallet || undefined,
+        (p: any) => setSubmitMsg(p.message)
+      );
       submission.blobId = blobId;
 
       // ── Step 3: Indexing Layer (Sui Native + Registry Fallback) ──────
@@ -1403,7 +1438,14 @@ export default function Home() {
                         </div>
 
                         <div style={{ fontSize: '20px' }}>
-                          <FieldInput field={f} value={data[f.id]??(f.type==='checkbox'?false:'')} onChange={v=>setField(f.id,v)} onFile={file=>handleFile(f.id,file)} uploading={!!fileUploading[f.id]} />
+                          <FieldInput 
+                            field={f} 
+                            value={data[f.id]??(f.type==='checkbox'?false:'')} 
+                            onChange={v=>setField(f.id,v)} 
+                            onFile={file=>handleFile(f.id,file)} 
+                            uploading={!!fileUploading[f.id]} 
+                            progressMsg={fileUploadMsg[f.id]}
+                          />
                           
                           {f.id === 'leader_email' && (() => {
                             const newsletterField = config.fields.find(field => field.id === 'newsletter' && field.enabled);
@@ -1465,7 +1507,7 @@ export default function Home() {
                           <button className="btn btn-primary btn-lg" style={{ width:'100%' }}
                             onClick={handleSubmit} disabled={status==='signing'||status==='submitting'}>
                             {status==='signing'   ? <><span className="spinner"/> Signing...</>
-                             :status==='submitting'? <><span className="spinner"/> Storing on Walrus...</>
+                             :status==='submitting'? <><span className="spinner"/> {submitMsg || 'Storing on Walrus...'}</>
                              : 'Sign & Submit Application'}
                           </button>
                           <button className="btn btn-ghost" onClick={handleBack} style={{ color: 'var(--text-3)' }}>
@@ -1482,7 +1524,14 @@ export default function Home() {
                       )}
                     </div>
 
-                    {errMsg && <div className="alert-error" style={{ marginTop:'24px' }}>{errMsg}</div>}
+                    {errMsg && (
+                      <div className="alert-error" style={{ marginTop:'24px', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)', color: '#fca5a5', padding: '16px', borderRadius: '12px', fontSize: '14px', textAlign: 'left' }}>
+                        <div style={{ fontWeight: 700, marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span>❌</span> Submission Error
+                        </div>
+                        {errMsg}
+                      </div>
+                    )}
 
                     <p style={{ marginTop:'32px', fontSize:'12px', color:'var(--text-3)' }}>
                       Stored on <a href="https://walrus.space" target="_blank" rel="noopener noreferrer" style={{color:'var(--text-2)',textDecoration:'none'}}>Walrus</a> - Decentralised - No server
