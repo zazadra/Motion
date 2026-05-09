@@ -27,9 +27,13 @@ export async function POST(req: NextRequest) {
     });
 
     if (!res.ok) {
-      const errorText = await res.text();
+      let errorText = await res.text();
+      // Handle Cloudflare HTML errors gracefully (e.g., Staketab 502 Bad Gateway)
+      if (res.status >= 500 && errorText.includes('<!DOCTYPE html>')) {
+        errorText = "The Walrus Mainnet storage nodes are currently offline or experiencing high traffic (Bad Gateway). Please try again later.";
+      }
       console.error('[Walrus Proxy] Upload failed:', res.status, errorText);
-      return NextResponse.json({ error: `Walrus Node Error: ${errorText}` }, { status: res.status });
+      return NextResponse.json({ error: errorText }, { status: res.status });
     }
 
     const data = await res.json();
