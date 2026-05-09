@@ -8,8 +8,6 @@ import type { WalrusUploadResponse } from '@/types/walform';
 export const NETWORK = 'mainnet'; 
 export const WALRUS_AGGREGATOR = 'https://wal-aggregator-mainnet.staketab.org';
 
-export const WALRUS_AGGREGATOR = 'https://wal-aggregator-mainnet.staketab.org';
-
 export type UploadStatus = 'pending' | 'uploading' | 'retrying' | 'queued' | 'success' | 'failed';
 export interface UploadProgress {
   status: UploadStatus;

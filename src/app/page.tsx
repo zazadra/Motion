@@ -401,7 +401,6 @@ export default function Home() {
 
   const [status, setStatus]     = useState<'idle'|'signing'|'submitting'|'success'|'error'>('idle');
   const [submitMsg, setSubmitMsg] = useState('');
-  const [syncMessage, setSyncMessage] = useState('');
   const [fileUploadMsg, setFileUploadMsg] = useState<Record<string, string>>({});
   const [submittedBlobId, setSubmittedBlobId] = useState('');
   const [errMsg, setErrMsg]     = useState('');
@@ -409,23 +408,7 @@ export default function Home() {
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [currentStep, setCurrentStep] = useState(0);
 
-  // Background: Auto-process upload queue on mount
-  useEffect(() => {
-    const { startSyncEngine } = require('@/lib/sync-engine');
-    
-    // Start engine (runs immediately then every 10s)
-    startSyncEngine();
-    
-    // Listen to sync events for UI
-    const handleSyncStatus = (e: any) => {
-      setSyncMessage(e.detail);
-    };
-    window.addEventListener('walform:sync_status', handleSyncStatus);
-    
-    return () => {
-      window.removeEventListener('walform:sync_status', handleSyncStatus);
-    };
-  }, []);
+
 
   // Track mouse for hero parallax
   useEffect(() => {
