@@ -13,6 +13,15 @@ export async function POST(req: NextRequest) {
 
     // Read the raw body bytes from the incoming request
     const buffer = await req.arrayBuffer();
+    
+    if (buffer.byteLength === 0) {
+      return NextResponse.json({ error: "Empty request body" }, { status: 400 });
+    }
+
+    // Vercel Hobby has 4.5MB limit. 
+    if (buffer.byteLength > 4.5 * 1024 * 1024) { 
+      return NextResponse.json({ error: "File too large for proxy (Vercel 4.5MB limit). Client will switch to direct upload." }, { status: 413 });
+    }
 
     let url = `${publisherUrl}/v1/blobs?epochs=${epochs}`;
     if (sendObjectTo) {
@@ -32,13 +41,20 @@ export async function POST(req: NextRequest) {
     });
 
     if (!res.ok) {
-      let errorText = await res.text();
+      let errorText = '';
+      try {
+        errorText = await res.text();
+      } catch {
+        errorText = `HTTP ${res.status}`;
+      }
+      
       // Handle Cloudflare HTML errors gracefully (e.g., Staketab 502 Bad Gateway)
       if (res.status >= 500 && errorText.includes('<!DOCTYPE html>')) {
-        errorText = `The storage node (${new URL(publisherUrl).hostname}) returned a Bad Gateway HTML response.`;
+        errorText = `The storage node (${new URL(publisherUrl).hostname}) returned a Bad Gateway (502/504). This usually means the node is busy or offline.`;
       }
+      
       console.warn(`[Walrus Proxy] [${publisherUrl}] failed: ${res.status} - ${errorText.substring(0, 100)}`);
-      return NextResponse.json({ error: errorText }, { status: res.status });
+      return NextResponse.json({ error: errorText || `Provider error ${res.status}` }, { status: res.status });
     }
 
     const data = await res.json();

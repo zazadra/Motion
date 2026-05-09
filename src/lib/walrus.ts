@@ -10,14 +10,14 @@ export const WALRUS_AGGREGATOR = 'https://wal-aggregator-mainnet.staketab.org';
 
 // Walrus Mainnet Publisher Pool
 export const PUBLISHER_POOL = [
-  'https://walrus-mainnet-publisher-1.staketab.org:443',
   'https://publisher.walrus-mainnet.mystenlabs.com',
-  'https://walrus-publisher-mainnet.mystenlabs.com',
-  'https://publisher.mainnet.walrus.space',
+  'https://publisher.walrus.space',
+  'https://walrus-mainnet-publisher.staketab.org',
+  'https://walrus-mainnet-publisher-1.staketab.org',
+  'https://walrus-mainnet-publisher.chainode.tech',
   'https://publisher.walrus-mainnet.nodeinfra.com',
   'https://publisher.walrus-mainnet.decentnode.com',
-  'https://publisher.walrus-mainnet.blockscope.net',
-  'https://walrus-mainnet-publisher.chainode.tech'
+  'https://publisher.walrus-mainnet.blockscope.net'
 ];
 
 export type UploadStatus = 'pending' | 'uploading' | 'retrying' | 'queued' | 'success' | 'failed';
@@ -49,22 +49,10 @@ function parseWalrusResponse(result: Record<string, unknown>): WalrusUploadRespo
 }
 
 /**
- * Health check: verify if a provider is responsive.
- */
-async function checkHealth(provider: string): Promise<boolean> {
-  try {
-    const res = await fetch(provider, { method: 'HEAD', signal: AbortSignal.timeout(3000) });
-    return res.status < 500;
-  } catch {
-    return false;
-  }
-}
-
-/**
- * Core upload function with Multi-Provider Fallback and Retries.
+ * Upload bytes to Walrus with failover and direct fallback
  */
 export async function uploadBytesToWalrus(
-  data: Uint8Array | string,
+  data: string | Uint8Array,
   epochs = 5,
   sendObjectTo?: string,
   onProgress?: (progress: UploadProgress) => void
@@ -76,76 +64,79 @@ export async function uploadBytesToWalrus(
   for (const provider of PUBLISHER_POOL) {
     const providerName = new URL(provider).hostname;
     
-    // Quick health check
-    onProgress?.({ status: 'uploading', provider: providerName, message: `Checking health of ${providerName}...` });
-    const isHealthy = await checkHealth(provider);
-    if (!isHealthy) {
-      console.warn(`[Walrus] Skipping unhealthy provider: ${providerName}`);
-      continue;
-    }
-
-    for (let attempt = 1; attempt <= 2; attempt++) {
+    // Try Proxy then Direct for each provider
+    for (const mode of ['proxy', 'direct']) {
       try {
-        const statusMsg = attempt > 1 
-          ? `Retrying with ${providerName} (Attempt ${attempt})...` 
+        const isDirect = mode === 'direct';
+        const statusMsg = isDirect 
+          ? `Direct upload to ${providerName}...` 
           : `Uploading to ${providerName}...`;
         
-        onProgress?.({ status: attempt > 1 ? 'retrying' : 'uploading', provider: providerName, attempt, message: statusMsg });
+        onProgress?.({ status: 'uploading', provider: providerName, message: statusMsg });
 
-        let url = `/api/walrus/upload?epochs=${epochs}&publisher=${encodeURIComponent(provider)}`;
-        if (sendObjectTo) url += `&send_object_to=${sendObjectTo}`;
+        let url = '';
+        let method = 'POST';
+        
+        if (isDirect) {
+          // Direct PUT to publisher (bypasses Vercel limits)
+          url = `${provider}/v1/blobs?epochs=${epochs}`;
+          if (sendObjectTo) url += `&send_object_to=${sendObjectTo}`;
+          method = 'PUT';
+        } else {
+          // Proxy via Vercel (avoids CORS issues)
+          url = `/api/walrus/upload?epochs=${epochs}&publisher=${encodeURIComponent(provider)}`;
+          if (sendObjectTo) url += `&send_object_to=${sendObjectTo}`;
+          method = 'POST';
+        }
 
         const res = await fetch(url, { 
-          method: 'POST', 
+          method, 
           body: body as any,
-          signal: AbortSignal.timeout(45000) // 45s per attempt
+          signal: AbortSignal.timeout(isDirect ? 120000 : 45000) // Longer timeout for direct
         });
 
         if (!res.ok) {
-          const text = await res.text();
-          throw new Error(text);
+          let errorInfo = '';
+          try {
+            const json = await res.json();
+            errorInfo = json.error || JSON.stringify(json);
+          } catch {
+            errorInfo = await res.text();
+          }
+          throw new Error(errorInfo || `HTTP ${res.status}`);
         }
 
         const result = await res.json();
         const duration = Date.now() - startTime;
-        console.log(`[Walrus] SUCCESS! Provider: ${providerName}, Duration: ${duration}ms`);
+        console.log(`[Walrus] SUCCESS! Provider: ${providerName}, Duration: ${duration}ms, Mode: ${mode}`);
         onProgress?.({ status: 'success', provider: providerName, message: 'Upload successful!' });
         return parseWalrusResponse(result);
 
       } catch (err: any) {
-        lastError = err.message || 'Unknown error';
-        console.warn(`[Walrus] [${providerName}] Attempt ${attempt} failed: ${lastError}`);
+        lastError = err.message || 'Connection failed';
+        console.warn(`[Walrus] [${providerName}] ${mode} attempt failed: ${lastError}`);
         
-        if (attempt < 2) {
-          const delay = 1000 * attempt; // 1s, 2s backoff
-          await new Promise(r => setTimeout(r, delay));
+        // Brief pause if proxy failed before trying direct
+        if (mode === 'proxy') {
+          await new Promise(r => setTimeout(r, 500));
         }
       }
     }
   }
 
-  // If we reach here, all providers failed
-  const errorMsg = `All providers failed. Last error: ${lastError}`;
-  onProgress?.({ status: 'failed', message: errorMsg });
-  
-  // Local Persistence Logic for JSON data
-  if (typeof data === 'string' || (data instanceof Uint8Array && data.length < 1024 * 512)) {
-    try {
-      const queue = JSON.parse(localStorage.getItem('walform_upload_queue') || '[]');
-      queue.push({
-        data: typeof data === 'string' ? data : Array.from(data),
-        epochs,
-        sendObjectTo,
-        timestamp: Date.now()
-      });
-      localStorage.setItem('walform_upload_queue', JSON.stringify(queue));
-      onProgress?.({ status: 'queued', message: 'Persistent storage failed. Data queued for local retry.' });
-    } catch (e) {
-      console.error('Failed to queue upload locally:', e);
-    }
-  }
+  // If we reach here, all providers failed. Queue it.
+  console.error('[Walrus] All providers failed. Queueing for retry...');
+  const queue = JSON.parse(localStorage.getItem('walform_upload_queue') || '[]');
+  queue.push({
+    data: Array.from(body), // Store as array for JSON compatibility
+    epochs,
+    sendObjectTo,
+    timestamp: Date.now()
+  });
+  localStorage.setItem('walform_upload_queue', JSON.stringify(queue));
 
-  throw new Error(errorMsg);
+  onProgress?.({ status: 'queued', message: 'Offline or all nodes busy. Data queued for auto-retry.' });
+  throw new Error(`All providers failed. Last error: ${lastError}`);
 }
 
 export async function uploadJsonToWalrus<T>(
@@ -179,7 +170,7 @@ export async function processUploadQueue() {
 
   for (const item of queue) {
     try {
-      const data = Array.isArray(item.data) ? new Uint8Array(item.data) : item.data;
+      const data = new Uint8Array(item.data);
       await uploadBytesToWalrus(data, item.epochs, item.sendObjectTo);
       console.log('[Walrus] Successfully flushed queued item.');
     } catch {
