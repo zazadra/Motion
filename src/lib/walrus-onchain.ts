@@ -91,6 +91,8 @@ export async function uploadJsonOnChain<T>(
   }
 }
 
+export const uploadOnChain = uploadJsonOnChain;
+
 /**
  * Creates a Form object on Sui to index the Walrus blob.
  */
