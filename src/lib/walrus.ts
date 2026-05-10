@@ -149,14 +149,15 @@ export async function uploadBytesToWalrus(
 
   // Convert to Uint8Array for direct upload
   let bytes: Uint8Array;
-  if (data instanceof Uint8Array) {
-    bytes = data;
-  } else if (data instanceof Blob || data instanceof File) {
-    bytes = new Uint8Array(await (data as Blob).arrayBuffer());
-  } else if (typeof data === 'string') {
-    bytes = new TextEncoder().encode(data);
+  const d = data as any;
+  if (d instanceof Uint8Array) {
+    bytes = d;
+  } else if (typeof d === 'string') {
+    bytes = new TextEncoder().encode(d);
+  } else if (d instanceof Blob || (typeof File !== 'undefined' && d instanceof File)) {
+    bytes = new Uint8Array(await d.arrayBuffer());
   } else {
-    bytes = data as Uint8Array;
+    bytes = d as Uint8Array;
   }
 
   // --- Tier 1: Direct browser upload ---
