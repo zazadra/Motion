@@ -543,17 +543,25 @@ export default function Home() {
     setFileUploading(u => ({ ...u, [fieldId]: true }));
     try {
       const { uploadBytesToWalrus } = await import('@/lib/walrus');
+      const { dAppKit } = await import('@/app/dapp-kit');
+
+      const signer = {
+        address,
+        signAndExecute: async (transaction: unknown) => {
+          const result = await dAppKit.signAndExecuteTransaction({ transaction: transaction as any });
+          if (!result?.digest) throw new Error('Wallet signing failed or was cancelled');
+          return { digest: result.digest };
+        },
+      };
       
       const fileArray = Array.isArray(files) ? files : [files];
       const newBlobIds: string[] = [];
       
       for (const file of fileArray) {
-        // Direct backend relay upload
-        const result = await uploadBytesToWalrus(file, 3);
+        const result = await uploadBytesToWalrus(file, signer, 3);
         newBlobIds.push(result.blobId);
       }
       
-      // Append to existing uploads instead of replacing
       setData(d => {
         const existing = d[fieldId];
         const existingArr = Array.isArray(existing) ? existing : (existing && typeof existing === 'string' ? [existing] : []);
@@ -647,12 +655,21 @@ export default function Home() {
       };
 
       const { uploadJsonToWalrus } = await import('@/lib/walrus');
-      const targetAdmin = adminWallet || (config.admins && config.admins[0]) || '';
+      const { dAppKit } = await import('@/app/dapp-kit');
+
+      const signer = {
+        address,
+        signAndExecute: async (transaction: unknown) => {
+          const result = await dAppKit.signAndExecuteTransaction({ transaction: transaction as any });
+          if (!result?.digest) throw new Error('Wallet signing failed or was cancelled');
+          return { digest: result.digest };
+        },
+      };
       
       const { blobId } = await uploadJsonToWalrus(
         submission,
-        5,
-        targetAdmin,
+        signer,
+        3,
         (p) => {
           setSubmitMsg(p.message || 'Publishing...');
         }
