@@ -10,7 +10,7 @@
  */
 
 import type { WalrusUploadResponse } from '@/types/walform';
-import { SuiClient, getFullnodeUrl } from '@mysten/sui/client';
+import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from '@mysten/sui/jsonRpc';
 import { NETWORK } from '@/lib/walrus';
 
 // ---------------------------------------------------------------------------
@@ -26,12 +26,12 @@ const WALRUS_BLOB_TYPE = '0xfdc88f7d7cf30afab2f82e8380d11ee8f70efb90e863d1de8616
 // Sui Client singleton
 // ---------------------------------------------------------------------------
 
-let _suiClient: SuiClient | null = null;
+let _suiClient: SuiJsonRpcClient | null = null;
 
-export function getSuiClient(): SuiClient {
+export function getSuiClient(): SuiJsonRpcClient {
   if (!_suiClient) {
-    _suiClient = new SuiClient({
-      url: getFullnodeUrl(NETWORK as 'mainnet'),
+    _suiClient = new SuiJsonRpcClient({
+      url: getJsonRpcFullnodeUrl(NETWORK as 'mainnet'),
     });
   }
   return _suiClient;
@@ -118,7 +118,7 @@ export async function uploadOnChain(
       digest: result.digest,
       options: { showObjectChanges: true }
     });
-    const blobChange = indexed.objectChanges?.find(
+    const blobChange = (indexed as any).objectChanges?.find(
       (c: any) => c.type === 'created' && c.objectType === WALRUS_BLOB_TYPE
     );
     if (blobChange && 'objectId' in blobChange) {

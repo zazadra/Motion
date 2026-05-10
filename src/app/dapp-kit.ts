@@ -1,16 +1,16 @@
 import { createDAppKit } from '@mysten/dapp-kit-react';
-import { SuiClient, getFullnodeUrl } from '@mysten/sui/client';
+import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from '@mysten/sui/jsonRpc';
 
 function createSuiClient() {
-  return new SuiClient({ 
-    url: getFullnodeUrl('mainnet')
+  return new SuiJsonRpcClient({ 
+    url: getJsonRpcFullnodeUrl('mainnet')
   });
 }
 
 export const dAppKit = createDAppKit({
   networks: ['mainnet'],
   defaultNetwork: 'mainnet',
-  createClient: createSuiClient,
+  createClient: createSuiClient as any, // Cast due to type differences in v2
   slushWalletConfig: { appName: 'Walform — Walrus Feedback Platform' },
 });
 
