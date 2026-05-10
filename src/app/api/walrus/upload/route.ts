@@ -7,12 +7,10 @@ export const runtime = 'nodejs';
 export const maxDuration = 60;
 
 const PUBLISHER_POOL = [
-  'https://publisher.walrus-mainnet.mystenlabs.com', 
-  'https://publisher.walrus.space',                  
-  'https://walrus-mainnet-publisher.staketab.org',   
-  'https://publisher.walrus-mainnet.nodeinfra.com',  
-  'https://walrus-mainnet-publisher.nodes.guru',
-  'https://walrus-mainnet-publisher.polkachu.com',
+  'https://publisher.walrus-mainnet.walrus.space',
+  'https://walrus-mainnet-publisher-1.staketab.org:443',
+  'https://walrus-mainnet-publisher.nami.cloud',
+  'https://publisher.walrus.space',
 ];
 
 /**

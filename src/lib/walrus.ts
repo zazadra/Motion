@@ -13,20 +13,17 @@ export const NETWORK = 'mainnet';
 
 // Aggregators for reads (multiple for redundancy)
 const AGGREGATOR_POOL = [
-  'https://aggregator.walrus-mainnet.mystenlabs.com',
-  'https://aggregator.walrus.space',
+  'https://aggregator.walrus-mainnet.walrus.space',
   'https://wal-aggregator-mainnet.staketab.org',
+  'https://aggregator.walrus.space',
 ];
 export const WALRUS_AGGREGATOR = AGGREGATOR_POOL[0];
 
-// Publishers that are known to support CORS and are reliably online on mainnet
 const DIRECT_PUBLISHER_POOL = [
-  'https://publisher.walrus-mainnet.mystenlabs.com',
-  'https://publisher.walrus.space',                 
-  'https://walrus-mainnet-publisher.staketab.org',  
-  'https://publisher.walrus-mainnet.nodeinfra.com',
-  'https://walrus-mainnet-publisher.nodes.guru',
-  'https://walrus-mainnet-publisher.polkachu.com',
+  'https://publisher.walrus-mainnet.walrus.space',
+  'https://walrus-mainnet-publisher-1.staketab.org:443',
+  'https://walrus-mainnet-publisher.nami.cloud',
+  'https://publisher.walrus.space',
 ];
 
 export type UploadStatus = 'pending' | 'uploading' | 'retrying' | 'queued' | 'success' | 'failed';
