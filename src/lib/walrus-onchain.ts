@@ -32,6 +32,7 @@ export function getSuiClient(): SuiJsonRpcClient {
   if (!_suiClient) {
     _suiClient = new SuiJsonRpcClient({
       url: getJsonRpcFullnodeUrl(NETWORK as 'mainnet'),
+      network: NETWORK as any,
     });
   }
   return _suiClient;
