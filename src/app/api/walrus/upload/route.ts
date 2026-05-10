@@ -91,11 +91,11 @@ export async function POST(req: NextRequest) {
 
       try {
         const result = await robustPut(url, buffer);
-        console.log(`[Relay] SUCCESS via ${publisherUrl}`);
+        console.log(`[Relay] SUCCESS via ${baseUrl}`);
         return NextResponse.json(result);
       } catch (err: any) {
-        console.warn(`[Relay] FAIL ${publisherUrl}: ${err.message}`);
-        errors.push(`${publisherUrl.replace('https://', '')}: ${err.message}`);
+        console.warn(`[Relay] FAIL ${baseUrl}: ${err.message}`);
+        errors.push(`${baseUrl.replace('https://', '')}: ${err.message}`);
         // Optional: slight delay before trying next node
         await new Promise(r => setTimeout(r, 500));
         continue;

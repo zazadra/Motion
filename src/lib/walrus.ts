@@ -87,17 +87,17 @@ async function tryDirectUpload(
         clearTimeout(timeoutId);
 
       if (!res.ok) {
-        console.warn(`[Walrus Direct] ${publisherUrl} → ${res.status}`);
+        console.warn(`[Walrus Direct] ${baseUrl} → ${res.status}`);
         continue;
       }
 
       const data = await res.json();
-      console.log(`[Walrus Direct] SUCCESS via ${publisherUrl}`);
+      console.log(`[Walrus Direct] SUCCESS via ${baseUrl}`);
       return parseWalrusResponse(data);
 
     } catch (err: any) {
       // CORS or network failure → try next
-      console.warn(`[Walrus Direct] ${publisherUrl} → ${err.message}`);
+      console.warn(`[Walrus Direct] ${baseUrl} → ${err.message}`);
       continue;
     }
   }
