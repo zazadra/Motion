@@ -344,7 +344,6 @@ export function FormBuilderTab({ config, onChange, ownerAddress }: {
           if (dAppKit) {
             await dAppKit.signAndExecuteTransaction({ 
               transaction: txb as any,
-              options: { showEffects: true }
             });
             console.log('[Sui] Form object created successfully.');
           }

@@ -88,7 +88,6 @@ export async function uploadOnChain(
 
   const result = await dAppKit.signAndExecuteTransaction({
     transaction: tx as any,
-    options: { showObjectChanges: true, showEffects: true }
   });
   
   console.log("[Sui] Transaction Result (Initial):", result);
