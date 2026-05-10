@@ -80,7 +80,17 @@ export function FeedbackCard() {
     };
 
     try {
-      const { blobId: id } = await uploadJsonToWalrus(payload, 10);
+      const signer = {
+        address: account.address,
+        signAndExecute: async (transaction: unknown) => {
+          const result = await dAppKit.signAndExecuteTransaction({ transaction: transaction as any });
+          // dAppKit v2 returns { $kind, Transaction: { digest } }
+          const digest = (result as any)?.Transaction?.digest ?? (result as any)?.digest;
+          if (!digest) throw new Error('Wallet signing failed or was cancelled');
+          return { digest };
+        },
+      };
+      const { blobId: id } = await uploadJsonToWalrus(payload, signer, 10);
       setBlobId(id);
       setFeedback('');
       setLink('');
