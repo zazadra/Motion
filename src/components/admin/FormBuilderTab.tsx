@@ -5,7 +5,9 @@ import { uploadJsonOnChain } from '@/lib/walrus-onchain';
 import { saveAdminConfig } from '@/lib/fields';
 import { motion } from 'framer-motion';
 import { cacheFormId } from '@/lib/form-registry';
-import { useSignAndExecuteTransaction } from '@mysten/dapp-kit-react';
+import { useDAppKit } from '@mysten/dapp-kit-react';
+import { CurrentAccountSigner } from '@mysten/dapp-kit-core';
+import { useMemo } from 'react';
 
 function uid() { return Math.random().toString(36).slice(2, 9); }
 
@@ -283,7 +285,8 @@ export function FormBuilderTab({ config, onChange, ownerAddress }: {
   const [pubUrl, setPubUrl]         = useState(config.publishedBlobId ? `${typeof window !== 'undefined' ? window.location.origin : ''}/?form=${config.publishedBlobId}` : '');
   const [copied, setCopied]         = useState(false);
 
-  const { mutateAsync: signAndExecute } = useSignAndExecuteTransaction();
+  const dAppKit = useDAppKit();
+  const signer = useMemo(() => new CurrentAccountSigner(dAppKit), [dAppKit]);
 
   function updateField(id: string, patch: Partial<SessionField>) {
     onChange({ ...config, fields: config.fields.map(f => f.id === id ? { ...f, ...patch } : f) });
@@ -340,7 +343,7 @@ export function FormBuilderTab({ config, onChange, ownerAddress }: {
       const { blobId } = await uploadJsonOnChain(
         cfg, 
         ownerAddress, 
-        signAndExecute,
+        (args: any) => signer.signAndExecuteTransaction(args),
         1, 
         (p: any) => setPubMsg(p.message)
       );
@@ -353,7 +356,7 @@ export function FormBuilderTab({ config, onChange, ownerAddress }: {
         if (WALFORM_PACKAGE_ID !== '0x0') {
           console.log('[Sui] Creating Form object for native indexing...');
           const txb = await createFormObject(cfg.id, blobId, ownerAddress);
-          await signAndExecute({
+          await signer.signAndExecuteTransaction({
             transaction: txb,
           });
           console.log('[Sui] Form object created successfully.');
