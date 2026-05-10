@@ -286,7 +286,7 @@ export function FormBuilderTab({ config, onChange, ownerAddress }: {
   const [copied, setCopied]         = useState(false);
 
   const dAppKit = useDAppKit();
-  const signer = useMemo(() => new CurrentAccountSigner(dAppKit), [dAppKit]);
+  const signer = useMemo(() => new CurrentAccountSigner(dAppKit as any), [dAppKit]);
 
   function updateField(id: string, patch: Partial<SessionField>) {
     onChange({ ...config, fields: config.fields.map(f => f.id === id ? { ...f, ...patch } : f) });
