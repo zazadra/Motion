@@ -40,14 +40,11 @@ export async function POST(req: NextRequest) {
     const errors: string[] = [];
 
     for (const publisherUrl of PUBLISHER_POOL) {
-      // Correct Walrus REST API: PUT /v1/blobs?epochs=N
-      // NOTE: Do NOT pass deletable=true — it's the default AND causes internal errors on some publishers
       let url = `${publisherUrl}/v1/blobs?epochs=${epochs}`;
       if (sendObjectTo) url += `&send_object_to=${sendObjectTo}`;
 
       console.log(`[Relay] → ${publisherUrl} | ${buffer.byteLength} bytes | ${epochs} epochs`);
 
-      try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
@@ -64,11 +61,9 @@ export async function POST(req: NextRequest) {
         clearTimeout(timeoutId);
 
         if (!res.ok) {
-          // Try to parse error as text (some publishers return HTML)
           let errText = '';
           try {
             const raw = await res.text();
-            // Strip HTML tags if it's an HTML error page
             errText = raw.replace(/<[^>]*>/g, '').trim().substring(0, 100);
           } catch { errText = res.statusText; }
 
@@ -82,14 +77,14 @@ export async function POST(req: NextRequest) {
         return NextResponse.json(data);
 
       } catch (err: any) {
-        const msg = err.name === 'TimeoutError' ? 'timeout (25s)' : err.message;
+        clearTimeout(timeoutId);
+        const msg = err.name === 'AbortError' ? 'timeout (25s)' : err.message;
         console.warn(`[Relay] ERROR ${publisherUrl} | ${msg}`);
         errors.push(`${publisherUrl}: ${msg}`);
         continue;
       }
     }
 
-    // All failed
     const summary = errors.join(' | ');
     console.error('[Relay] All publishers failed:', summary);
     return NextResponse.json(
