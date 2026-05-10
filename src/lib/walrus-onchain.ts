@@ -77,15 +77,24 @@ export async function uploadJsonOnChain<T>(
     onProgress?.({ message: 'Please approve the transaction in your wallet...' });
     
     // Execute via the passed signer (dAppKit hook)
+    console.log("[Sui] Executing registration transaction...");
     const result = await signAndExecute({
       transaction: txb,
-      options: { showObjectChanges: true }
+      options: { showObjectChanges: true, showEffects: true }
     });
+    console.log("[Sui] Transaction Result:", result);
 
     const blobObject = result.objectChanges?.find(
       (c: any) => c.type === 'created' && c.objectType.includes('::blob::Blob')
     );
-    const objectId = blobObject?.objectId || result.digest;
+    
+    if (!blobObject) {
+      console.error("[Sui] CRITICAL: Blob object not found in transaction changes. All changes:", result.objectChanges);
+      throw new Error("Blob object not found in transaction. Please ensure you have enough WAL and SUI.");
+    }
+
+    const objectId = blobObject.objectId;
+    console.log("[Sui] Registered Blob Object ID:", objectId);
 
     onProgress?.({ message: 'Uploading to nodes...' });
     
