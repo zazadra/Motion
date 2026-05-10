@@ -7,6 +7,8 @@
 
 import type { WalrusUploadResponse } from '@/types/walform';
 import type { WalrusSigner } from '@/lib/walrus';
+import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from '@mysten/sui/jsonRpc';
+
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -14,6 +16,24 @@ import type { WalrusSigner } from '@/lib/walrus';
 
 export const WALFORM_PACKAGE_ID: string =
   '0x56d0c64c632b581c6efc3fa7b6f058f3d1cdbd1d83fb7399a9da2cac48267e3f';
+
+// ---------------------------------------------------------------------------
+// Sui client (for read-only chain queries — no wallet needed)
+// ---------------------------------------------------------------------------
+
+let _suiClient: SuiJsonRpcClient | null = null;
+
+/** Returns a singleton Sui JSON-RPC client for read-only chain queries. */
+export function getSuiClient(): SuiJsonRpcClient {
+  if (!_suiClient) {
+    _suiClient = new SuiJsonRpcClient({
+      url: getJsonRpcFullnodeUrl('mainnet'),
+      network: 'mainnet',
+    });
+  }
+  return _suiClient;
+}
+
 
 // ---------------------------------------------------------------------------
 // Upload entry point

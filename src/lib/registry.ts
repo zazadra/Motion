@@ -1,7 +1,8 @@
-import { readJsonFromWalrus, uploadJsonToWalrus } from './walrus';
+import { readJsonFromWalrus } from './walrus';
 import { getSuiClient } from './walrus-onchain';
 import { decodeBlobId } from './form-registry';
 import type { Submission } from '@/types/walform';
+
 
 export interface FormRegistryData {
   type: 'form_registry';
@@ -99,15 +100,10 @@ export async function updateFormRegistry(
     lastUpdated: Date.now(),
   };
 
-  // 3. Upload and send to owner
-  try {
-    const { blobId } = await uploadJsonToWalrus(updated, 5, owner);
-    console.log(`[Registry] Form registry updated to v${updated.version}`);
-    return blobId;
-  } catch (err) {
-    console.error('[Registry] Update failed:', err);
-    return null;
-  }
+  // Registry update via Walrus requires a wallet signer (not available here).
+  // Submission blob IDs are tracked separately via BroadcastChannel / localStorage.
+  console.warn('[Registry] updateFormRegistry: signer required – skipping Walrus write');
+  return null;
 }
 
 /**
