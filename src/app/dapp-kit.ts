@@ -3,7 +3,8 @@ import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from '@mysten/sui/jsonRpc';
 
 function createSuiClient() {
   return new SuiJsonRpcClient({ 
-    url: getJsonRpcFullnodeUrl('mainnet')
+    url: getJsonRpcFullnodeUrl('mainnet'),
+    network: 'mainnet',
   });
 }
 
