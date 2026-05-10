@@ -83,9 +83,8 @@ async function tryDirectUpload(
     try {
       const res = await fetch(url, {
         method: provider.method,
-        body: bytes,
+        body: bytes.buffer as ArrayBuffer,
         signal: controller.signal,
-        // Don't set Content-Type – let browser set it for binary data
       });
       clearTimeout(timeoutId);
 
