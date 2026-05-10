@@ -2,11 +2,8 @@
  * Walrus On-Chain Integration
  *
  * Coordinates between:
- *   1. Walrus blob storage (via SDK writeBlobFlow)
+ *   1. Walrus blob storage (via HTTP Relay)
  *   2. Sui Move smart contracts (Form/Submission indexing)
- *
- * The upload path uses dAppKit.signAndExecuteTransaction directly to avoid 
- * account state sync issues.
  */
 
 import type { WalrusUploadResponse } from '@/types/walform';
@@ -43,7 +40,7 @@ export function getSuiClient(): SuiJsonRpcClient {
 // ---------------------------------------------------------------------------
 
 /**
- * Upload arbitrary data to Walrus using the user's connected dAppKit wallet.
+ * Upload arbitrary data to Walrus using the high-performance HTTP relay.
  *
  * @param data - Any JSON-serializable value, or a raw Uint8Array/Blob/File
  * @param ownerAddress - The user's connected Sui wallet address
@@ -60,8 +57,7 @@ export async function uploadOnChain(
 ): Promise<WalrusUploadResponse> {
   if (!ownerAddress) throw new Error('Sui Wallet not found. Please ensure your wallet is connected and unlocked.');
 
-  const { getWalrusClient } = await import('@/lib/walrus');
-  const client = getWalrusClient();
+  const { uploadBytesToWalrus } = await import('@/lib/walrus');
 
   // Serialize to bytes if not already raw binary
   let bytes: Uint8Array;
@@ -73,78 +69,19 @@ export async function uploadOnChain(
     bytes = new TextEncoder().encode(JSON.stringify(data));
   }
 
-  onProgress?.({ message: 'Initializing Walrus upload flow...' });
+  onProgress?.({ message: 'Uploading to Walrus via high-performance relay...' });
   
-  const uploadFlow = await client.writeBlobFlow({
-    blob: bytes,
-    epochs,
-  });
+  // Use the direct HTTP upload which is much faster and more reliable
+  const res = await uploadBytesToWalrus(
+    bytes, 
+    epochs, 
+    targetOwner || ownerAddress, 
+    (p) => onProgress?.({ message: p.message || `Status: ${p.status}` })
+  );
 
-  onProgress?.({ message: 'Requesting storage transaction signature...' });
-  const tx = await uploadFlow.transaction();
+  console.log("[Walrus] Upload successful:", res);
   
-  // Use dAppKit for signing to avoid state mismatches
-  const { dAppKit } = await import('@/app/dapp-kit');
-  if (!dAppKit) throw new Error('dAppKit not initialized');
-
-  const result = await dAppKit.signAndExecuteTransaction({
-    transaction: tx as any,
-  });
-  
-  console.log("[Sui] Transaction Result (Initial):", result);
-  
-  if (result.effects?.status?.status === 'failure') {
-    const error = result.effects.status.error || 'Unknown Sui error';
-    console.error("[Sui] Transaction failed on-chain:", error);
-    throw new Error(`Transaction failed: ${error}`);
-  }
-
-  let objectId: string | undefined;
-
-  // Try to find the blob object ID in the response
-  if (result.objectChanges) {
-    const blobChange = result.objectChanges.find(
-      (c: any) => c.type === 'created' && c.objectType === WALRUS_BLOB_TYPE
-    );
-    if (blobChange && 'objectId' in blobChange) {
-      objectId = blobChange.objectId;
-    }
-  }
-
-  // Fallback: wait for transaction and fetch object
-  if (!objectId) {
-    console.warn('[Sui] Blob ID not found in immediate response. Fetching indexed data...');
-    const indexed = await getSuiClient().waitForTransaction({
-      digest: result.digest,
-      options: { showObjectChanges: true }
-    });
-    const blobChange = (indexed as any).objectChanges?.find(
-      (c: any) => c.type === 'created' && c.objectType === WALRUS_BLOB_TYPE
-    );
-    if (blobChange && 'objectId' in blobChange) {
-      objectId = blobChange.objectId;
-    }
-  }
-
-  if (!objectId) {
-    console.error("[Sui] Final diagnostic check failed. Result:", result);
-    throw new Error('Blob object not found in transaction. Please ensure you have enough WAL and SUI and try again.');
-  }
-
-  onProgress?.({ message: 'Writing blob to Walrus nodes...' });
-  try {
-    await uploadFlow.upload();
-  } catch (err) {
-    console.error("SDK UPLOAD ERROR:", err);
-    throw err;
-  }
-
-  return {
-    blobId: uploadFlow.blobId,
-    blobObjectId: objectId,
-    endEpoch: uploadFlow.endEpoch,
-    suiTransactionDigest: result.digest
-  };
+  return res;
 }
 
 /**
