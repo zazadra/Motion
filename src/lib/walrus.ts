@@ -20,10 +20,8 @@ const AGGREGATOR_POOL = [
 export const WALRUS_AGGREGATOR = AGGREGATOR_POOL[0];
 
 const DIRECT_PUBLISHER_POOL = [
-  'https://publisher.walrus-mainnet.walrus.space/v1/blobs',
-  'https://walrus-mainnet-publisher.nami.cloud/v1/store',
+  'https://upload-relay.mainnet.walrus.space/v1/blob-upload-relay', // Official Mysten Relay (POST)
   'https://walrus-mainnet-publisher-1.staketab.org:443/v1/blobs',
-  'https://walrus-mainnet-publisher.staketab.org/v1/blobs',
   'https://publisher.walrus.space/v1/blobs',
 ];
 
@@ -70,6 +68,10 @@ async function tryDirectUpload(
   onProgress?: (p: UploadProgress) => void,
 ): Promise<WalrusUploadResponse | null> {
   for (const baseUrl of DIRECT_PUBLISHER_POOL) {
+    // Determine method based on endpoint
+    const isRelay = baseUrl.includes('upload-relay');
+    const method = isRelay ? 'POST' : 'PUT';
+
     let url = `${baseUrl}?epochs=${epochs}`;
     if (sendObjectTo) url += `&send_object_to=${encodeURIComponent(sendObjectTo)}`;
 
@@ -80,7 +82,7 @@ async function tryDirectUpload(
 
       try {
         const res = await fetch(url, {
-          method: 'PUT',
+          method: method,
           body: bytes as any,
           signal: controller.signal,
         });

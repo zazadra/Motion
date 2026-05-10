@@ -7,10 +7,8 @@ export const runtime = 'nodejs';
 export const maxDuration = 60;
 
 const PUBLISHER_POOL = [
-  'https://publisher.walrus-mainnet.walrus.space/v1/blobs',
-  'https://walrus-mainnet-publisher.nami.cloud/v1/store',
+  'https://upload-relay.mainnet.walrus.space/v1/blob-upload-relay', // Official Mysten Relay (POST)
   'https://walrus-mainnet-publisher-1.staketab.org:443/v1/blobs',
-  'https://walrus-mainnet-publisher.staketab.org/v1/blobs',
   'https://publisher.walrus.space/v1/blobs',
 ];
 
@@ -19,11 +17,11 @@ const PUBLISHER_POOL = [
  * This avoids 'fetch failed' issues common with undici/fetch in Vercel's Node environment
  * when talking to certain decentralized infrastructure nodes.
  */
-function robustPut(urlStr: string, buffer: Buffer): Promise<any> {
+function robustHttpRequest(urlStr: string, method: string, buffer: Buffer): Promise<any> {
   return new Promise((resolve, reject) => {
     const url = new URL(urlStr);
     const options = {
-      method: 'PUT',
+      method: method,
       hostname: url.hostname,
       port: url.port || 443,
       path: url.pathname + url.search,
@@ -83,14 +81,18 @@ export async function POST(req: NextRequest) {
     const errors: string[] = [];
 
     for (const baseUrl of PUBLISHER_POOL) {
-      // Append query params to the base URL (which now includes the path)
+      // Determine method based on endpoint
+      const isRelay = baseUrl.includes('upload-relay');
+      const method = isRelay ? 'POST' : 'PUT';
+
+      // Append query params
       let url = `${baseUrl}?epochs=${epochs}`;
       if (sendObjectTo) url += `&send_object_to=${sendObjectTo}`;
 
-      console.log(`[Relay] PUT → ${url} (${buffer.length} bytes)`);
+      console.log(`[Relay] ${method} → ${url} (${buffer.length} bytes)`);
 
       try {
-        const result = await robustPut(url, buffer);
+        const result = await robustHttpRequest(url, method, buffer);
         console.log(`[Relay] SUCCESS via ${baseUrl}`);
         return NextResponse.json(result);
       } catch (err: any) {
