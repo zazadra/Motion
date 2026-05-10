@@ -1,29 +1,30 @@
 /**
  * Walrus HTTP API
  *
- * Upload Strategy (3-tier):
- *   1. Direct browser upload → fastest, uses user's IP (no server-side rate limits)
- *   2. Backend relay → fallback if CORS blocks direct
- *   3. Error with clear message
+ * Upload strategy (2-tier):
+ *   1. Direct browser upload  – fastest, uses user's IP (avoids server-side rate limits)
+ *   2. Backend relay          – fallback when CORS blocks direct upload
+ *
+ * Provider information is centralised in walrus-providers.ts.
  */
 
 import type { WalrusUploadResponse } from '@/types/walform';
+import {
+  WALRUS_PROVIDERS,
+  WALRUS_AGGREGATORS,
+  PRIMARY_AGGREGATOR,
+  buildUploadUrl,
+  classifyError,
+} from '@/lib/walrus-providers';
 
 export const NETWORK = 'mainnet';
 
-// Aggregators for reads (multiple for redundancy)
-const AGGREGATOR_POOL = [
-  'https://aggregator.walrus-mainnet.walrus.space',
-  'https://wal-aggregator-mainnet.staketab.org',
-  'https://aggregator.walrus.space',
-];
-export const WALRUS_AGGREGATOR = AGGREGATOR_POOL[0];
+// Re-export for consumers that import directly from this file
+export { PRIMARY_AGGREGATOR as WALRUS_AGGREGATOR };
 
-const DIRECT_PUBLISHER_POOL = [
-  'https://upload-relay.mainnet.walrus.space/v1/blob-upload-relay', // Official Mysten Relay (POST)
-  'https://walrus-mainnet-publisher-1.staketab.org:443/v1/blobs',
-  'https://publisher.walrus.space/v1/blobs',
-];
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
 
 export type UploadStatus = 'pending' | 'uploading' | 'retrying' | 'queued' | 'success' | 'failed';
 export interface UploadProgress {
@@ -39,9 +40,10 @@ export interface UploadProgress {
 
 function parseWalrusResponse(result: Record<string, unknown>): WalrusUploadResponse {
   if (result.newlyCreated) {
-    const blob = (result.newlyCreated as Record<string, unknown>).blobObject as Record<string, unknown>;
+    const blob = (result.newlyCreated as Record<string, unknown>)
+      .blobObject as Record<string, unknown>;
     return {
-      blobId:   blob.blobId as string,
+      blobId: blob.blobId as string,
       objectId: blob.id as string,
       endEpoch: (blob.storage as Record<string, unknown>)?.endEpoch as number,
     };
@@ -49,62 +51,64 @@ function parseWalrusResponse(result: Record<string, unknown>): WalrusUploadRespo
   if (result.alreadyCertified) {
     const ac = result.alreadyCertified as Record<string, unknown>;
     return {
-      blobId:   ac.blobId as string,
+      blobId: ac.blobId as string,
       objectId: ((ac.event as Record<string, unknown>)?.txDigest as string) ?? '',
       endEpoch: ac.endEpoch as number,
     };
   }
-  throw new Error('Unexpected Walrus response: ' + JSON.stringify(result));
+  throw new Error('Unexpected Walrus response shape: ' + JSON.stringify(result).slice(0, 200));
 }
 
 // ---------------------------------------------------------------------------
-// Tier 1: Direct browser upload (no server round-trip, no IP rate limits)
+// Tier 1: Direct browser upload
 // ---------------------------------------------------------------------------
 
 async function tryDirectUpload(
   bytes: Uint8Array,
-  epochs: number,
   sendObjectTo?: string,
   onProgress?: (p: UploadProgress) => void,
 ): Promise<WalrusUploadResponse | null> {
-  for (const baseUrl of DIRECT_PUBLISHER_POOL) {
-    // Determine method based on endpoint
-    const isRelay = baseUrl.includes('upload-relay');
-    const method = isRelay ? 'POST' : 'PUT';
+  for (const provider of WALRUS_PROVIDERS) {
+    const url = buildUploadUrl(provider, { sendObjectTo });
 
-    let url = `${baseUrl}?epochs=${epochs}`;
-    if (sendObjectTo) url += `&send_object_to=${encodeURIComponent(sendObjectTo)}`;
+    onProgress?.({
+      status: 'uploading',
+      provider: provider.name,
+      message: `Trying ${provider.name}…`,
+    });
 
-    onProgress?.({ status: 'uploading', provider: baseUrl.replace('https://', ''), message: `Trying ${baseUrl.replace('https://', '')}...` });
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30_000);
 
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000);
-
-      try {
-        const res = await fetch(url, {
-          method: method,
-          body: bytes as any,
-          signal: controller.signal,
-        });
-        clearTimeout(timeoutId);
+    try {
+      const res = await fetch(url, {
+        method: provider.method,
+        body: bytes,
+        signal: controller.signal,
+        // Don't set Content-Type – let browser set it for binary data
+      });
+      clearTimeout(timeoutId);
 
       if (!res.ok) {
-        console.warn(`[Walrus Direct] ${baseUrl} → ${res.status}`);
+        const { kind } = classifyError(new Error(`HTTP ${res.status}`));
+        console.warn(`[Walrus Direct] ${provider.name} → ${res.status} (${kind})`);
         continue;
       }
 
       const data = await res.json();
-      console.log(`[Walrus Direct] SUCCESS via ${baseUrl}`);
-      return parseWalrusResponse(data);
-
-    } catch (err: any) {
-      // CORS or network failure → try next
-      console.warn(`[Walrus Direct] ${baseUrl} → ${err.message}`);
+      console.log(`[Walrus Direct] ✓ ${provider.name}`);
+      return parseWalrusResponse(data as Record<string, unknown>);
+    } catch (err: unknown) {
+      clearTimeout(timeoutId);
+      const { kind, message } = classifyError(err);
+      console.warn(`[Walrus Direct] ✗ ${provider.name} – ${kind}: ${message}`);
+      // CORS failures and DNS errors both appear as TypeError here –
+      // fall through to next provider regardless
       continue;
     }
   }
 
-  return null; // All direct attempts failed
+  return null; // All direct attempts exhausted
 }
 
 // ---------------------------------------------------------------------------
@@ -113,87 +117,93 @@ async function tryDirectUpload(
 
 async function tryRelayUpload(
   data: string | Uint8Array | File | Blob,
-  epochs: number,
   sendObjectTo?: string,
   onProgress?: (p: UploadProgress) => void,
 ): Promise<WalrusUploadResponse> {
-  onProgress?.({ status: 'retrying', provider: 'Backend Relay', message: 'Trying server relay...' });
+  onProgress?.({ status: 'retrying', provider: 'Backend Relay', message: 'Trying server relay…' });
 
-  let url = `/api/walrus/upload?epochs=${epochs}`;
-  if (sendObjectTo) url += `&send_object_to=${encodeURIComponent(sendObjectTo)}`;
+  // Note: 'epochs' is NOT forwarded – it's no longer accepted by the Walrus API
+  const url = sendObjectTo
+    ? `/api/walrus/upload?send_object_to=${encodeURIComponent(sendObjectTo)}`
+    : `/api/walrus/upload`;
 
   const res = await fetch(url, {
     method: 'POST',
-    body: data as any,
+    body: data as BodyInit,
   });
 
-  let result: any;
+  let result: Record<string, unknown>;
   try {
     result = await res.json();
   } catch {
-    throw new Error(`Relay HTTP ${res.status}: ${res.statusText}`);
+    throw new Error(`Relay returned non-JSON (HTTP ${res.status}: ${res.statusText})`);
   }
 
   if (!res.ok) {
-    throw new Error(result?.error || `Relay failed (HTTP ${res.status})`);
+    const detail = Array.isArray(result.detail)
+      ? '\n' + (result.detail as string[]).join('\n')
+      : '';
+    throw new Error((result.error as string | undefined) ?? `Relay failed (HTTP ${res.status})` + detail);
   }
 
   return parseWalrusResponse(result);
 }
 
 // ---------------------------------------------------------------------------
-// Main export: 3-tier upload with automatic fallback
+// Public API: 2-tier upload with automatic fallback
 // ---------------------------------------------------------------------------
 
 export async function uploadBytesToWalrus(
   data: string | Uint8Array | File | Blob,
-  epochs = 5,
+  _epochs = 5,          // kept for API compatibility – no longer forwarded to Walrus
   sendObjectTo?: string,
   onProgress?: (progress: UploadProgress) => void,
 ): Promise<WalrusUploadResponse> {
   const startTime = Date.now();
 
-  // Convert to Uint8Array for direct upload
+  // Normalise input to Uint8Array for direct upload
   let bytes: Uint8Array;
-  const d = data as any;
-  if (d instanceof Uint8Array) {
-    bytes = d;
-  } else if (typeof d === 'string') {
-    bytes = new TextEncoder().encode(d);
-  } else if (d instanceof Blob || (typeof File !== 'undefined' && d instanceof File)) {
-    bytes = new Uint8Array(await d.arrayBuffer());
+  if (data instanceof Uint8Array) {
+    bytes = data;
+  } else if (typeof data === 'string') {
+    bytes = new TextEncoder().encode(data);
+  } else if (data instanceof Blob) {
+    bytes = new Uint8Array(await data.arrayBuffer());
   } else {
-    bytes = d as Uint8Array;
+    bytes = data as Uint8Array;
   }
+
+  const elapsed = () => `${((Date.now() - startTime) / 1000).toFixed(1)}s`;
 
   // --- Tier 1: Direct browser upload ---
   try {
-    onProgress?.({ status: 'uploading', message: 'Connecting to Walrus network...' });
-    const directResult = await tryDirectUpload(bytes, epochs, sendObjectTo, onProgress);
-    if (directResult) {
-      const duration = Date.now() - startTime;
-      console.log(`[Walrus] Direct upload SUCCESS in ${duration}ms`);
-      onProgress?.({ status: 'success', message: `Published in ${(duration / 1000).toFixed(1)}s` });
-      return directResult;
+    onProgress?.({ status: 'uploading', message: 'Connecting to Walrus network…' });
+    const direct = await tryDirectUpload(bytes, sendObjectTo, onProgress);
+    if (direct) {
+      onProgress?.({ status: 'success', message: `Published in ${elapsed()}` });
+      return direct;
     }
-  } catch (err: any) {
-    console.warn('[Walrus] Direct upload failed:', err.message);
+  } catch (err: unknown) {
+    const { message } = classifyError(err);
+    console.warn('[Walrus] Direct upload error:', message);
   }
 
   // --- Tier 2: Backend relay ---
   try {
-    onProgress?.({ status: 'retrying', message: 'Trying backup relay...' });
-    const relayResult = await tryRelayUpload(data, epochs, sendObjectTo, onProgress);
-    const duration = Date.now() - startTime;
-    console.log(`[Walrus] Relay upload SUCCESS in ${duration}ms`);
-    onProgress?.({ status: 'success', message: `Published via relay in ${(duration / 1000).toFixed(1)}s` });
-    return relayResult;
-  } catch (err: any) {
-    console.error('[Walrus] Relay upload failed:', err.message);
-    onProgress?.({ status: 'failed', message: 'Upload failed. Check your connection.' });
-    throw new Error(`Walrus upload failed: ${err.message}`);
+    onProgress?.({ status: 'retrying', message: 'Routing through relay…' });
+    const relay = await tryRelayUpload(data, sendObjectTo, onProgress);
+    onProgress?.({ status: 'success', message: `Published via relay in ${elapsed()}` });
+    return relay;
+  } catch (err: unknown) {
+    const { kind, message } = classifyError(err);
+    onProgress?.({ status: 'failed', message: 'Upload failed – see console for details' });
+    throw new Error(
+      `Walrus upload failed (${kind}): ${message}`,
+    );
   }
 }
+
+// Convenience wrappers
 
 export async function uploadJsonToWalrus<T>(
   data: T,
@@ -219,7 +229,7 @@ export async function uploadFileToWalrus(
 // ---------------------------------------------------------------------------
 
 export async function readBlobFromWalrus(blobId: string): Promise<Uint8Array> {
-  for (const agg of AGGREGATOR_POOL) {
+  for (const agg of WALRUS_AGGREGATORS) {
     try {
       const res = await fetch(`${agg}/v1/blobs/${blobId}`, {
         signal: AbortSignal.timeout(15_000),
@@ -229,27 +239,27 @@ export async function readBlobFromWalrus(blobId: string): Promise<Uint8Array> {
       continue;
     }
   }
-  throw new Error(`Failed to read blob ${blobId} from all aggregators`);
+  throw new Error(`Failed to read blob "${blobId}" from all aggregators`);
 }
 
 export async function readJsonFromWalrus<T>(blobId: string, retries = 3): Promise<T> {
-  let lastErr: any;
+  let lastErr: unknown;
   for (let i = 0; i < retries; i++) {
     try {
       const bytes = await readBlobFromWalrus(blobId);
       return JSON.parse(new TextDecoder().decode(bytes)) as T;
     } catch (err) {
       lastErr = err;
-      if (i < retries - 1) await new Promise(r => setTimeout(r, 2000 * (i + 1)));
+      if (i < retries - 1) await new Promise((r) => setTimeout(r, 2_000 * (i + 1)));
     }
   }
   throw lastErr;
 }
 
-export function getWalrusBlobUrl(blobId: string) {
-  return `${WALRUS_AGGREGATOR}/v1/blobs/${blobId}`;
+export function getWalrusBlobUrl(blobId: string): string {
+  return `${PRIMARY_AGGREGATOR}/v1/blobs/${blobId}`;
 }
 
-export function getWalrusScanUrl(blobId: string) {
+export function getWalrusScanUrl(blobId: string): string {
   return `https://walruscan.com/mainnet/blob/${blobId}`;
 }

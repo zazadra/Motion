@@ -1,75 +1,123 @@
 import { NextRequest, NextResponse } from 'next/server';
 import https from 'https';
 import { URL } from 'url';
+import {
+  WALRUS_PROVIDERS,
+  buildUploadUrl,
+  classifyError,
+  type WalrusProvider,
+} from '@/lib/walrus-providers';
 
-// Node.js runtime is required for 'https' module and longer timeouts
+// Node.js runtime required for native 'https' module and longer timeouts
 export const runtime = 'nodejs';
 export const maxDuration = 60;
 
-const PUBLISHER_POOL = [
-  'https://upload-relay.mainnet.walrus.space/v1/blob-upload-relay', // Official Mysten Relay (POST)
-  'https://walrus-mainnet-publisher-1.staketab.org:443/v1/blobs',
-  'https://publisher.walrus.space/v1/blobs',
-];
+// ---------------------------------------------------------------------------
+// Core HTTP transport (native https – avoids undici/fetch quirks on Vercel)
+// ---------------------------------------------------------------------------
 
-/**
- * Robust HTTP PUT using Node's native 'https' module.
- * This avoids 'fetch failed' issues common with undici/fetch in Vercel's Node environment
- * when talking to certain decentralized infrastructure nodes.
- */
-function robustHttpRequest(urlStr: string, method: string, buffer: Buffer): Promise<any> {
+function httpsRequest(
+  urlStr: string,
+  method: string,
+  buffer: Buffer,
+  timeoutMs = 30_000,
+): Promise<Record<string, unknown>> {
   return new Promise((resolve, reject) => {
     const url = new URL(urlStr);
-    const options = {
-      method: method,
-      hostname: url.hostname,
-      port: url.port || 443,
-      path: url.pathname + url.search,
-      headers: {
-        'Content-Type': 'application/octet-stream',
-        'Content-Length': buffer.length,
-        'User-Agent': 'Walform-Relay/1.1',
+
+    const req = https.request(
+      {
+        method,
+        hostname: url.hostname,
+        port: url.port ? Number(url.port) : 443,
+        path: url.pathname + url.search,
+        headers: {
+          'Content-Type': 'application/octet-stream',
+          'Content-Length': buffer.length,
+          'User-Agent': 'Walform-Relay/2.0',
+        },
+        timeout: timeoutMs,
       },
-      timeout: 30000,
-    };
+      (res) => {
+        const chunks: Buffer[] = [];
+        res.on('data', (c: Buffer) => chunks.push(c));
+        res.on('end', () => {
+          const body = Buffer.concat(chunks).toString('utf-8');
+          const status = res.statusCode ?? 0;
 
-    const req = https.request(options, (res) => {
-      let data = '';
-      res.on('data', (chunk) => { data += chunk; });
-      res.on('end', () => {
-        if (res.statusCode && res.statusCode >= 200 && res.statusCode < 300) {
-          try {
-            resolve(JSON.parse(data));
-          } catch (e) {
-            resolve({ raw: data }); // Fallback if not JSON
+          if (status >= 200 && status < 300) {
+            try {
+              resolve(JSON.parse(body));
+            } catch {
+              // Non-JSON 2xx – unlikely for Walrus but handle gracefully
+              resolve({ raw: body });
+            }
+          } else {
+            // Strip HTML tags from error bodies (e.g. CloudFlare error pages)
+            const clean = body.replace(/<[^>]*>/g, '').trim().slice(0, 200);
+            reject(new Error(`HTTP ${status}: ${clean || res.statusMessage}`));
           }
-        } else {
-          // Extract error message from HTML if needed
-          const cleanErr = data.replace(/<[^>]*>/g, '').trim().substring(0, 100);
-          reject(new Error(`HTTP ${res.statusCode}: ${cleanErr || res.statusMessage}`));
-        }
-      });
-    });
-
-    req.on('error', (err) => {
-      reject(err);
-    });
+        });
+      },
+    );
 
     req.on('timeout', () => {
       req.destroy();
-      reject(new Error('Timeout (30s)'));
+      reject(new Error(`Timeout after ${timeoutMs / 1000}s`));
     });
+
+    req.on('error', reject);
 
     req.write(buffer);
     req.end();
   });
 }
 
+// ---------------------------------------------------------------------------
+// Upload against a single provider – structured error on failure
+// ---------------------------------------------------------------------------
+
+interface ProviderResult {
+  ok: true;
+  data: Record<string, unknown>;
+  provider: WalrusProvider;
+}
+interface ProviderError {
+  ok: false;
+  provider: WalrusProvider;
+  kind: 'dns' | 'api_mismatch' | 'provider_down' | 'unknown';
+  message: string;
+}
+
+async function tryProvider(
+  provider: WalrusProvider,
+  buffer: Buffer,
+  opts: { sendObjectTo?: string },
+): Promise<ProviderResult | ProviderError> {
+  const url = buildUploadUrl(provider, opts);
+  console.log(`[Relay] ${provider.method} → ${url} (${buffer.length} bytes) [${provider.name}]`);
+
+  try {
+    const data = await httpsRequest(url, provider.method, buffer);
+    console.log(`[Relay] ✓ SUCCESS via ${provider.name}`);
+    return { ok: true, data, provider };
+  } catch (err: unknown) {
+    const { kind, message } = classifyError(err);
+    console.warn(`[Relay] ✗ FAIL [${provider.name}] ${kind}: ${message}`);
+    return { ok: false, provider, kind, message };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Route handler
+// ---------------------------------------------------------------------------
+
 export async function POST(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
-    const epochs = Math.max(1, parseInt(searchParams.get('epochs') || '5', 10));
-    const sendObjectTo = searchParams.get('send_object_to');
+    // Note: 'epochs' is intentionally NOT forwarded – it was removed from the
+    // Walrus public publisher API. Blobs now use network-default storage duration.
+    const sendObjectTo = searchParams.get('send_object_to') ?? undefined;
 
     const arrayBuffer = await req.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
@@ -80,38 +128,32 @@ export async function POST(req: NextRequest) {
 
     const errors: string[] = [];
 
-    for (const baseUrl of PUBLISHER_POOL) {
-      // Determine method based on endpoint
-      const isRelay = baseUrl.includes('upload-relay');
-      const method = isRelay ? 'POST' : 'PUT';
+    for (const provider of WALRUS_PROVIDERS) {
+      const result = await tryProvider(provider, buffer, { sendObjectTo });
 
-      // Append query params
-      let url = `${baseUrl}?epochs=${epochs}`;
-      if (sendObjectTo) url += `&send_object_to=${sendObjectTo}`;
-
-      console.log(`[Relay] ${method} → ${url} (${buffer.length} bytes)`);
-
-      try {
-        const result = await robustHttpRequest(url, method, buffer);
-        console.log(`[Relay] SUCCESS via ${baseUrl}`);
-        return NextResponse.json(result);
-      } catch (err: any) {
-        console.warn(`[Relay] FAIL ${baseUrl}: ${err.message}`);
-        errors.push(`${baseUrl.replace('https://', '')}: ${err.message}`);
-        // Optional: slight delay before trying next node
-        await new Promise(r => setTimeout(r, 500));
-        continue;
+      if (result.ok) {
+        return NextResponse.json(result.data);
       }
+
+      // Build a human-readable error entry
+      errors.push(`[${provider.name}] ${result.kind}: ${result.message}`);
+
+      // Short back-off before next provider to avoid thundering-herd on the
+      // same infrastructure (several providers share Cloudflare WAF)
+      await new Promise((r) => setTimeout(r, 400));
     }
 
-    const summary = errors.join(' | ');
     return NextResponse.json(
-      { error: `Walrus Publishers exhausted. Last errors: ${summary}` },
+      {
+        error: 'All Walrus publishers failed',
+        detail: errors,
+        hint: 'Check https://github.com/MystenLabs/awesome-walrus for updated publisher endpoints',
+      },
       { status: 502 },
     );
-
-  } catch (error: any) {
-    console.error('[Relay] Global Error:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : String(error);
+    console.error('[Relay] Unhandled error:', msg);
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
