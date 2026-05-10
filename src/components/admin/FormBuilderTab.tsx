@@ -371,7 +371,6 @@ export function FormBuilderTab({ config, onChange, ownerAddress }: {
       cacheFormId(ownerAddress, blobId);
       const formUrl = `${window.location.origin}/?form=${blobId}`;
       setPubUrl(formUrl);
-      setPubBlobId(blobId);
     } catch (e) { alert('Publish failed: ' + (e as Error).message); }
     setPublishing(false);
   }
