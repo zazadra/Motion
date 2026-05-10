@@ -1,9 +1,9 @@
 import type { WalrusUploadResponse } from '@/types/walform';
-import { SuiClient, getFullnodeUrl } from '@mysten/sui/client';
+import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from '@mysten/sui/jsonRpc';
 import { WalrusClient } from '@mysten/walrus';
 import { NETWORK } from '@/lib/walrus';
 
-let suiClient: SuiClient | null = null;
+let suiClient: SuiJsonRpcClient | null = null;
 let walrusClient: WalrusClient | null = null;
 
 const WALRUS_MAINNET_SYSTEM_ID = '0x2134d52768ea07e8c43570ef975eb3e4c27a39fa6396bef985b5abc58d03ddd2';
@@ -14,8 +14,9 @@ export const WALFORM_PACKAGE_ID: string = '0x56d0c64c632b581c6efc3fa7b6f058f3d1c
 
 function initClients() {
   if (!suiClient) {
-    suiClient = new SuiClient({ 
-      url: getFullnodeUrl(NETWORK as any),
+    suiClient = new SuiJsonRpcClient({ 
+      url: getJsonRpcFullnodeUrl(NETWORK as any),
+      network: NETWORK as any
     });
   }
   if (!walrusClient) {
@@ -43,7 +44,6 @@ export function getSuiClient() {
 
 /**
  * Uploads data to Walrus using native wallet signing.
- * This replaces the unreliable backend relay.
  */
 export async function uploadJsonOnChain<T>(
   data: T, 
@@ -64,13 +64,10 @@ export async function uploadJsonOnChain<T>(
     onProgress?.({ message: 'Requesting wallet signature for storage...' });
     
     // Register the blob on Walrus via the SDK
-    // This creates a transaction that the user must sign
     const { blobId, txBlock } = await client.register(bytes, epochs);
     
-    // Request signature from the user's wallet
     onProgress?.({ message: 'Please approve the transaction in your wallet...' });
     
-    // Use the global dAppKit or a provider injected by the wallet
     const provider = (window as any).suiWallet || (window as any).slush || (window as any).sui;
     if (!provider) throw new Error("Sui Wallet not found. Please install a wallet extension.");
 
@@ -78,9 +75,6 @@ export async function uploadJsonOnChain<T>(
       transaction: txBlock,
     });
 
-    console.log('[Walrus] Transaction Success:', result.digest);
-
-    // Certify the blob (make it available to the network)
     onProgress?.({ message: 'Certifying blob availability...' });
     await client.certify(bytes, blobId, result.digest);
 
@@ -88,7 +82,7 @@ export async function uploadJsonOnChain<T>(
 
     return {
       blobId,
-      objectId: result.digest, // Using tx digest as a proxy for object tracking
+      objectId: result.digest,
       endEpoch: epochs,
     };
   } catch (err: any) {
