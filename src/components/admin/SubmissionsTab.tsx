@@ -372,7 +372,7 @@ export function SubmissionsTab({ ownerAddress, formBlobId: initialFormBlobId, on
           </div>
 
           {searchResult && (
-            <div className="card" style={{ padding: '20px', borderLeft: `4px solid ${searchResult?.fields ? 'var(--accent)' : STATUS_COLORS[(searchResult as any)?.status || 'pending']}` }}>
+            <div className="card" style={{ padding: '20px', borderLeft: `4px solid ${searchResult?.fields ? 'var(--accent)' : STATUS_COLORS[((searchResult as any)?.status || 'pending') as SubmissionStatus]}` }}>
                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
                  <div>
                    <p style={{ fontSize: '12px', color: 'var(--text-3)' }}>{searchResult?.fields ? 'Form Title' : 'Submission ID'}</p>
