@@ -146,7 +146,17 @@ export async function uploadBytesToWalrus(
     })]
   });
 
-  await flow.encode();
+  const encoded = await flow.encode();
+  const blobId = encoded.blobId;
+
+  // 0. Pre-check: if already on Walrus, skip everything
+  try {
+    const existing = await readBlobFromWalrus(blobId);
+    if (existing) {
+      onProgress?.({ status: 'success', message: 'Already on Walrus ✓' });
+      return { blobId, objectId: '', endEpoch: 0 };
+    }
+  } catch { /* ignore */ }
 
   // 1. Register
   onProgress?.({ status: 'registering', message: 'Waiting for wallet approval (register)...' });
@@ -174,7 +184,7 @@ export async function uploadBytesToWalrus(
 
   // 2. Upload to storage nodes
   onProgress?.({ status: 'uploading', message: 'Uploading encoded slivers...' });
-  const uploaded = await flow.upload();
+  const uploaded = await flow.upload({ digest: blobId });
 
   // 3. Certify
   onProgress?.({ status: 'certifying', message: 'Waiting for wallet approval (certify)...' });
