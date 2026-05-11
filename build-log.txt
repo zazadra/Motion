@@ -1,0 +1,125 @@
+
+> motion@0.1.0 build
+> next build
+
+⚠ Warning: Next.js inferred your workspace root, but it may not be correct.
+ We detected multiple lockfiles and selected the directory of C:\Users\bengo\package-lock.json as the root directory.
+ To silence this warning, set `turbopack.root` in your Next.js config, or consider removing one of the lockfiles if it's not needed.
+   See https://nextjs.org/docs/app/api-reference/config/next-config-js/turbopack#root-directory for more information.
+ Detected additional lockfiles: 
+   * C:\Users\bengo\OneDrive\Documents\Walrus Session 2\motion\package-lock.json
+
+▲ Next.js 16.2.4 (Turbopack)
+
+  Creating an optimized production build ...
+
+> Build error occurred
+Error: Turbopack build failed with 4 errors:
+./OneDrive/Documents/Walrus Session 2/motion/src/lib/walrus.ts:100:1
+Export SuiClient doesn't exist in target module
+  [90m 98 |[0m [90m// ---------------------------------------------------------------------------[0m
+  [90m 99 |[0m
+[31m[1m>[0m [90m100 |[0m [36mimport[0m { getFullnodeUrl, [33mSuiClient[0m } [36mfrom[0m [32m'@mysten/sui/client'[0m;
+  [90m    |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m101 |[0m [36mimport[0m { [33mWalrusClient[0m } [36mfrom[0m [32m'@mysten/walrus'[0m;
+  [90m102 |[0m
+  [90m103 |[0m /**
+
+The export SuiClient was not found in module [project]/OneDrive/Documents/Walrus Session 2/motion/node_modules/@mysten/sui/dist/client/index.mjs [app-client] (ecmascript).
+Did you mean to import CoreClient?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./OneDrive/Documents/Walrus Session 2/motion/src/lib/walrus.ts [Client Component Browser]
+    ./OneDrive/Documents/Walrus Session 2/motion/src/app/page.tsx [Client Component Browser]
+    ./OneDrive/Documents/Walrus Session 2/motion/src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./OneDrive/Documents/Walrus Session 2/motion/src/lib/walrus.ts [Client Component SSR]
+    ./OneDrive/Documents/Walrus Session 2/motion/src/app/page.tsx [Client Component SSR]
+    ./OneDrive/Documents/Walrus Session 2/motion/src/app/page.tsx [Server Component]
+
+
+./OneDrive/Documents/Walrus Session 2/motion/src/lib/walrus.ts:100:1
+Export SuiClient doesn't exist in target module
+  [90m 98 |[0m [90m// ---------------------------------------------------------------------------[0m
+  [90m 99 |[0m
+[31m[1m>[0m [90m100 |[0m [36mimport[0m { getFullnodeUrl, [33mSuiClient[0m } [36mfrom[0m [32m'@mysten/sui/client'[0m;
+  [90m    |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m101 |[0m [36mimport[0m { [33mWalrusClient[0m } [36mfrom[0m [32m'@mysten/walrus'[0m;
+  [90m102 |[0m
+  [90m103 |[0m /**
+
+The export SuiClient was not found in module [project]/OneDrive/Documents/Walrus Session 2/motion/node_modules/@mysten/sui/dist/client/index.mjs [app-ssr] (ecmascript).
+Did you mean to import CoreClient?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./OneDrive/Documents/Walrus Session 2/motion/src/lib/walrus.ts [Client Component Browser]
+    ./OneDrive/Documents/Walrus Session 2/motion/src/app/page.tsx [Client Component Browser]
+    ./OneDrive/Documents/Walrus Session 2/motion/src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./OneDrive/Documents/Walrus Session 2/motion/src/lib/walrus.ts [Client Component SSR]
+    ./OneDrive/Documents/Walrus Session 2/motion/src/app/page.tsx [Client Component SSR]
+    ./OneDrive/Documents/Walrus Session 2/motion/src/app/page.tsx [Server Component]
+
+
+./OneDrive/Documents/Walrus Session 2/motion/src/lib/walrus.ts:100:1
+Export getFullnodeUrl doesn't exist in target module
+  [90m 98 |[0m [90m// ---------------------------------------------------------------------------[0m
+  [90m 99 |[0m
+[31m[1m>[0m [90m100 |[0m [36mimport[0m { getFullnodeUrl, [33mSuiClient[0m } [36mfrom[0m [32m'@mysten/sui/client'[0m;
+  [90m    |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m101 |[0m [36mimport[0m { [33mWalrusClient[0m } [36mfrom[0m [32m'@mysten/walrus'[0m;
+  [90m102 |[0m
+  [90m103 |[0m /**
+
+The export getFullnodeUrl was not found in module [project]/OneDrive/Documents/Walrus Session 2/motion/node_modules/@mysten/sui/dist/client/index.mjs [app-client] (ecmascript).
+Did you mean to import SimulationError?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./OneDrive/Documents/Walrus Session 2/motion/src/lib/walrus.ts [Client Component Browser]
+    ./OneDrive/Documents/Walrus Session 2/motion/src/app/page.tsx [Client Component Browser]
+    ./OneDrive/Documents/Walrus Session 2/motion/src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./OneDrive/Documents/Walrus Session 2/motion/src/lib/walrus.ts [Client Component SSR]
+    ./OneDrive/Documents/Walrus Session 2/motion/src/app/page.tsx [Client Component SSR]
+    ./OneDrive/Documents/Walrus Session 2/motion/src/app/page.tsx [Server Component]
+
+
+./OneDrive/Documents/Walrus Session 2/motion/src/lib/walrus.ts:100:1
+Export getFullnodeUrl doesn't exist in target module
+  [90m 98 |[0m [90m// ---------------------------------------------------------------------------[0m
+  [90m 99 |[0m
+[31m[1m>[0m [90m100 |[0m [36mimport[0m { getFullnodeUrl, [33mSuiClient[0m } [36mfrom[0m [32m'@mysten/sui/client'[0m;
+  [90m    |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m101 |[0m [36mimport[0m { [33mWalrusClient[0m } [36mfrom[0m [32m'@mysten/walrus'[0m;
+  [90m102 |[0m
+  [90m103 |[0m /**
+
+The export getFullnodeUrl was not found in module [project]/OneDrive/Documents/Walrus Session 2/motion/node_modules/@mysten/sui/dist/client/index.mjs [app-ssr] (ecmascript).
+Did you mean to import SimulationError?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./OneDrive/Documents/Walrus Session 2/motion/src/lib/walrus.ts [Client Component Browser]
+    ./OneDrive/Documents/Walrus Session 2/motion/src/app/page.tsx [Client Component Browser]
+    ./OneDrive/Documents/Walrus Session 2/motion/src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./OneDrive/Documents/Walrus Session 2/motion/src/lib/walrus.ts [Client Component SSR]
+    ./OneDrive/Documents/Walrus Session 2/motion/src/app/page.tsx [Client Component SSR]
+    ./OneDrive/Documents/Walrus Session 2/motion/src/app/page.tsx [Server Component]
+
+
+    at <unknown> (./OneDrive/Documents/Walrus Session 2/motion/src/lib/walrus.ts:100:1)
+    at <unknown> (./OneDrive/Documents/Walrus Session 2/motion/src/lib/walrus.ts:100:1)
+    at <unknown> (./OneDrive/Documents/Walrus Session 2/motion/src/lib/walrus.ts:100:1)
+    at <unknown> (./OneDrive/Documents/Walrus Session 2/motion/src/lib/walrus.ts:100:1)

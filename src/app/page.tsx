@@ -1251,7 +1251,7 @@ export default function Home() {
           borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', 
           fontSize: '40px', margin: '0 auto 24px', boxShadow: '0 0 30px rgba(74,222,128,0.3)' 
         }}>
-          -
+          ✓
         </div>
         
         <h2 style={{ fontSize: '26px', fontWeight: 800, marginBottom: '12px', letterSpacing: '-0.02em', color: '#fff' }}>
@@ -1264,7 +1264,7 @@ export default function Home() {
         {/* Premium Blob ID Section */}
         <div style={{ background: 'rgba(124,58,237,0.05)', border: '1px solid rgba(124,58,237,0.2)', borderRadius: '16px', padding: '20px', marginBottom: '32px', textAlign: 'left' }}>
           <p style={{ fontSize: '11px', fontWeight: 700, color: 'var(--accent-2)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <span style={{ fontSize: '14px' }}>🔗</span> Decentralized Proof (Blob ID)
+            <span style={{ fontSize: '14px' }}>🔗</span> Submission ID
           </p>
           <div style={{ fontFamily: 'var(--mono)', fontSize: '11px', color: 'rgba(255,255,255,0.7)', wordBreak: 'break-all', lineHeight: 1.6, background: 'rgba(0,0,0,0.3)', padding: '12px', borderRadius: '10px', marginBottom: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
             {submittedBlobId}

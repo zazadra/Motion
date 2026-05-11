@@ -124,7 +124,13 @@ export async function getSuiNativeSubmissions(owner: string, packageId: string, 
     const ids = res.data.map(obj => {
       const content = (obj.data?.content as any)?.fields;
       if (formId && content?.form_id !== formId) return null;
-      return content?.walrus_blob_id as string;
+      const rawId = content?.walrus_blob_id as string;
+      if (!rawId) return null;
+      try {
+        return decodeBlobId(rawId);
+      } catch {
+        return null;
+      }
     }).filter((id): id is string => Boolean(id));
 
     return ids;
@@ -151,7 +157,13 @@ export async function getSuiNativeForms(owner: string, packageId: string): Promi
 
     const ids = res.data.map(obj => {
       const content = (obj.data?.content as any)?.fields;
-      return content?.blob_id as string;
+      const rawId = content?.blob_id as string;
+      if (!rawId) return null;
+      try {
+        return decodeBlobId(rawId);
+      } catch {
+        return null;
+      }
     }).filter((id): id is string => Boolean(id));
 
     return ids;

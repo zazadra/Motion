@@ -32,7 +32,9 @@ const AGGREGATOR = 'https://aggregator.walrus-mainnet.walrus.space';
 /** Public fallback aggregator */
 const AGGREGATORS = [
   AGGREGATOR,
+  'https://walrus-mainnet-aggregator.nodes.guru',
   'https://wal-aggregator-mainnet.staketab.org',
+  'https://aggregator.walrus.space',
 ];
 
 export const WALRUS_AGGREGATOR = AGGREGATOR;
@@ -97,17 +99,19 @@ export function parseWalrusResponse(result: Record<string, unknown>): WalrusUplo
 // Main upload – uses official SDK + Upload Relay + wallet signer
 // ---------------------------------------------------------------------------
 
-import { WALRUS_PROVIDERS, buildUploadUrl } from './walrus-providers';
+import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from '@mysten/sui/jsonRpc';
+import { WalrusClient, WalrusFile } from '@mysten/walrus';
 
 /**
- * Upload bytes to Walrus Mainnet using the HTTP Publisher API.
+ * Upload bytes to Walrus Mainnet using the @mysten/walrus SDK.
  *
- * This bypasses the need for wallet signatures (and avoids 'no balance changes' errors)
- * by utilizing community or official publishers that accept direct HTTP uploads.
+ * This flow requires two wallet signatures (Register & Certify).
+ * If the blob is already certified (or registered), we detect empty transactions
+ * to prevent Sui RPC errors ("no balance changes").
  *
  * @param data        Raw bytes, string, File, or Blob to store
- * @param signer      Wallet signer (kept for API compatibility but unused)
- * @param epochs      Storage duration (ignored by v1 publishers, they use default/sponsored epochs)
+ * @param signer      Wallet signer
+ * @param epochs      Storage duration
  * @param onProgress  Optional progress callback
  */
 export async function uploadBytesToWalrus(
@@ -126,32 +130,82 @@ export async function uploadBytesToWalrus(
     bytes = new Uint8Array(await (data as Blob).arrayBuffer());
   }
 
-  onProgress?.({ status: 'uploading', message: 'Uploading to Walrus via HTTP Publisher…' });
+  onProgress?.({ status: 'encoding', message: 'Encoding data...' });
 
-  // Use the primary working publisher for mainnet
-  const provider = WALRUS_PROVIDERS[0];
-  const url = buildUploadUrl(provider);
+  const suiClient = new SuiJsonRpcClient({ url: getJsonRpcFullnodeUrl(NETWORK), network: NETWORK });
+  const walrusClient = new WalrusClient({
+    network: NETWORK,
+    suiClient: suiClient as any, // Walrus expects a SuiClient-like object, and SuiJsonRpcClient implements most of it.
+  });
 
-  try {
-    const res = await fetch(url, {
-      method: provider.method,
-      body: bytes as any,
-    });
+  const flow = walrusClient.writeFilesFlow({
+    files: [WalrusFile.from({
+      contents: bytes,
+      identifier: 'file',
+      tags: { 'Content-Type': (data as File).type || 'application/octet-stream' }
+    })]
+  });
 
-    if (!res.ok) {
-      const text = await res.text();
-      throw new Error(`Walrus Publisher error (${res.status}): ${text}`);
+  // 1. Register
+  onProgress?.({ status: 'registering', message: 'Waiting for wallet approval (register)...' });
+  const registerTx = flow.register({ owner: signer.address, deletable: false, epochs });
+  
+  // If the blob is already certified, the transaction will have no commands.
+  // We must skip signing empty transactions to prevent Sui errors.
+  if (registerTx && registerTx.getData().commands.length > 0) {
+    try {
+      await signer.signAndExecute(registerTx);
+    } catch (err: any) {
+      const msg = err.message || String(err);
+      if (msg.includes('User rejected')) {
+        onProgress?.({ status: 'failed', message: 'Upload cancelled by user (register)' });
+        throw err;
+      }
+      // "no balance changes" means the blob is likely already registered/paid for
+      if (msg.includes('no balance changes')) {
+        console.info('Register skipped: Blob already exists on-chain.');
+      } else {
+        console.warn('Register transaction failed or skipped:', err);
+      }
     }
-
-    const result = await res.json();
-    const parsed = parseWalrusResponse(result);
-
-    onProgress?.({ status: 'success', message: `Stored on Walrus ✓ (blobId: ${parsed.blobId.slice(0, 12)}…)` });
-    return parsed;
-  } catch (err: any) {
-    onProgress?.({ status: 'failed', message: `Upload failed: ${err.message}` });
-    throw err;
   }
+
+  // 2. Upload to storage nodes
+  onProgress?.({ status: 'uploading', message: 'Uploading encoded slivers...' });
+  const uploaded = await flow.upload();
+
+  // 3. Certify
+  onProgress?.({ status: 'certifying', message: 'Waiting for wallet approval (certify)...' });
+  const certifyTx = flow.certify();
+  if (certifyTx && certifyTx.getData().commands.length > 0) {
+    try {
+      await signer.signAndExecute(certifyTx);
+    } catch (err: any) {
+      const msg = err.message || String(err);
+      if (msg.includes('User rejected')) {
+        onProgress?.({ status: 'failed', message: 'Upload cancelled by user (certify)' });
+        throw err;
+      }
+      if (msg.includes('no balance changes')) {
+        console.info('Certify skipped: Blob already certified.');
+      } else {
+        console.warn('Certify transaction failed or skipped:', err);
+      }
+    }
+  }
+
+  // The SDK might return an extended Blob ID object id or Base64url + suffix. 
+  // We extract exactly 43 characters which represents the true Walrus Blob ID.
+  const rawBlobId = uploaded.blobId ?? '';
+  const parsedBlobId = typeof rawBlobId === 'string' ? rawBlobId.slice(0, 43) : String(rawBlobId).slice(0, 43);
+
+  onProgress?.({ status: 'success', message: `Stored on Walrus ✓ (blobId: ${parsedBlobId.slice(0, 12)}…)` });
+  
+  return {
+    blobId: parsedBlobId,
+    objectId: uploaded.blobObjectId ?? '',
+    endEpoch: 0, // endEpoch is no longer in WriteBlobStepUploaded, so we default to 0
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -182,9 +236,13 @@ export async function uploadFileToWalrus(
 // ---------------------------------------------------------------------------
 
 export async function readBlobFromWalrus(blobId: string): Promise<Uint8Array> {
+  // Truncate to 43 chars (valid base64url length for 32-byte Walrus Blob ID)
+  // This fixes broken submissions that accidentally stored 52-char IDs from the SDK earlier.
+  const cleanBlobId = blobId.slice(0, 43);
+
   for (const agg of AGGREGATORS) {
     try {
-      const res = await fetch(`${agg}/v1/blobs/${blobId}`, {
+      const res = await fetch(`${agg}/v1/blobs/${cleanBlobId}`, {
         signal: AbortSignal.timeout(15_000),
       });
       if (res.ok) return new Uint8Array(await res.arrayBuffer());
@@ -192,7 +250,7 @@ export async function readBlobFromWalrus(blobId: string): Promise<Uint8Array> {
       continue;
     }
   }
-  throw new Error(`Failed to read blob "${blobId}" from all aggregators`);
+  throw new Error(`Failed to read blob "${cleanBlobId}" from all aggregators`);
 }
 
 export async function readJsonFromWalrus<T>(blobId: string, retries = 3): Promise<T> {
@@ -210,7 +268,8 @@ export async function readJsonFromWalrus<T>(blobId: string, retries = 3): Promis
 }
 
 export function getWalrusBlobUrl(blobId: string): string {
-  return `${AGGREGATOR}/v1/blobs/${blobId}`;
+  const cleanBlobId = blobId.slice(0, 43);
+  return `${AGGREGATOR}/v1/blobs/${cleanBlobId}`;
 }
 
 export function getWalrusScanUrl(blobId: string): string {

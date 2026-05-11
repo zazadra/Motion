@@ -45,8 +45,10 @@ export interface ClassifiedBlob {
 
 function classify(obj: any): BlobKind {
   if (!obj || typeof obj !== 'object') return 'unknown';
-  if (obj.type === 'form' || (Array.isArray(obj.fields) && obj.title !== undefined)) return 'form';
-  if (obj.type === 'submission' || obj.status !== undefined) return 'submission';
+  // Form check: has fields array and a title
+  if (obj.type === 'form' || (Array.isArray(obj.fields) && (obj.title !== undefined || obj.config !== undefined))) return 'form';
+  // Submission check: has formId or formBlobId
+  if (obj.type === 'submission' || obj.formId !== undefined || obj.formBlobId !== undefined || obj.status !== undefined) return 'submission';
   return 'unknown';
 }
 
@@ -60,6 +62,16 @@ function readCache<T>(key: string): T | null {
 function writeCache(key: string, data: any) {
   if (typeof window === 'undefined') return;
   try { localStorage.setItem(key, JSON.stringify(data)); } catch { /* quota full */ }
+}
+
+const CONTENT_CACHE_PREFIX = 'walform:content:';
+
+function getCachedContent<T>(blobId: string): T | null {
+  return readCache<T>(`${CONTENT_CACHE_PREFIX}${blobId}`);
+}
+
+function cacheContent(blobId: string, content: any) {
+  writeCache(`${CONTENT_CACHE_PREFIX}${blobId}`, content);
 }
 
 /** Get cached form blobIds for a wallet */
@@ -149,8 +161,16 @@ export async function scanOwnedBlobs(wallet: string): Promise<{
   const submissions: Submission[] = [];
   const archivedIds = getArchivedFormIds(wallet);
 
+  // Fetch only what's not in cache
   const results = await Promise.allSettled(
-    newBlobIds.map(id => readJsonFromWalrus<any>(id).then(c => ({ blobId: id, content: c })))
+    newBlobIds.map(async (id) => {
+      const cached = getCachedContent<any>(id);
+      if (cached) return { blobId: id, content: cached };
+      
+      const content = await readJsonFromWalrus<any>(id);
+      cacheContent(id, content);
+      return { blobId: id, content };
+    })
   );
 
   for (const r of results) {
