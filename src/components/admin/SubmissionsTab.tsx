@@ -670,7 +670,6 @@ export function SubmissionsTab({ ownerAddress, formBlobId: initialFormBlobId, on
                   </div>
                 )}
               </motion.div>
-                    </motion.div>
                   ))}
                 </AnimatePresence>
 
