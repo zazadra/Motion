@@ -74,7 +74,7 @@ export function SubmissionsTab({ ownerAddress, formBlobId: initialFormBlobId, on
   
   const [searchBlobId, setSearchBlobId] = useState('');
   const [searchLoading, setSearchLoading] = useState(false);
-  const [searchResult, setSearchResult] = useState<Submission | null>(null);
+  const [searchResult, setSearchResult] = useState<any>(null);
   const [searchError, setSearchError] = useState('');
 
   const loadedIdsRef = useRef<Set<string>>(new Set());
@@ -372,11 +372,11 @@ export function SubmissionsTab({ ownerAddress, formBlobId: initialFormBlobId, on
           </div>
 
           {searchResult && (
-            <div className="card" style={{ padding: '20px', borderLeft: `4px solid ${searchResult.fields ? 'var(--accent)' : STATUS_COLORS[(searchResult as any).status || 'pending']}` }}>
+            <div className="card" style={{ padding: '20px', borderLeft: `4px solid ${searchResult?.fields ? 'var(--accent)' : STATUS_COLORS[(searchResult as any)?.status || 'pending']}` }}>
                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
                  <div>
-                   <p style={{ fontSize: '12px', color: 'var(--text-3)' }}>{searchResult.fields ? 'Form Title' : 'Submission ID'}</p>
-                   <p style={{ fontWeight: 700 }}>{searchResult.title || (searchResult.id ? shorten(searchResult.id) : 'Untitled')}</p>
+                   <p style={{ fontSize: '12px', color: 'var(--text-3)' }}>{searchResult?.fields ? 'Form Title' : 'Submission ID'}</p>
+                   <p style={{ fontWeight: 700 }}>{searchResult?.title || (searchResult?.id ? shorten(searchResult.id) : 'Untitled')}</p>
                  </div>
                  <div style={{ textAlign: 'right' }}>
                    <p style={{ fontSize: '12px', color: 'var(--text-3)' }}>Type</p>
