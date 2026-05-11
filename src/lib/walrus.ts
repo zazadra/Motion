@@ -146,6 +146,8 @@ export async function uploadBytesToWalrus(
     })]
   });
 
+  await flow.encode();
+
   // 1. Register
   onProgress?.({ status: 'registering', message: 'Waiting for wallet approval (register)...' });
   const registerTx = flow.register({ owner: signer.address, deletable: false, epochs });
