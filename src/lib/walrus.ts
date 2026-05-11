@@ -255,7 +255,7 @@ export async function readBlobFromWalrus(blobId: string): Promise<Uint8Array> {
   for (const agg of AGGREGATORS) {
     try {
       const res = await fetch(`${agg}/v1/blobs/${cleanBlobId}`, {
-        signal: AbortSignal.timeout(15_000),
+        signal: AbortSignal.timeout(30_000),
       });
       if (res.ok) return new Uint8Array(await res.arrayBuffer());
     } catch {
