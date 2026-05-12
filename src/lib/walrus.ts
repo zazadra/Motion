@@ -131,14 +131,14 @@ export async function uploadBytesToWalrus(
 
   onProgress?.({ status: 'encoding', message: 'Encoding data...' });
 
-  const walrusClient = getWalrusClient();
-  // FIX: Use writeBlobFlow (raw bytes) instead of writeFilesFlow (file wrapper)
-  const flow = walrusClient.writeBlobFlow({ blob: bytes });
+  try {
+    const walrusClient = getWalrusClient();
+    const flow = walrusClient.writeBlobFlow({ blob: bytes });
 
-  const encoded = await flow.encode();
-  const blobId = encoded.blobId;
+    const encoded = await flow.encode();
+    const blobId = encoded.blobId;
 
-  // Pre-check: if already on Walrus, skip wallet popups
+    // Pre-check: if already on Walrus, skip wallet popups
   try {
     const existing = await readBlobFromWalrus(blobId);
     if (existing) {
@@ -195,11 +195,37 @@ export async function uploadBytesToWalrus(
 
   onProgress?.({ status: 'success', message: `Stored on Walrus ✓ (${cleanBlobId.slice(0, 12)}…)` });
 
-  return {
-    blobId: cleanBlobId,
-    objectId: uploaded.blobObjectId ?? '',
-    endEpoch: 0,
-  };
+    return {
+      blobId: cleanBlobId,
+      objectId: uploaded.blobObjectId ?? '',
+      endEpoch: 0,
+    };
+  } catch (err: any) {
+    console.warn('[Walrus] Native SDK failed, falling back to API relay...', err);
+    onProgress?.({ status: 'uploading', message: 'Native upload failed, trying server relay...' });
+    
+    // Fallback to our robust server-side /api/walrus/upload
+    const res = await fetch('/api/walrus/upload?epochs=' + epochs, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/octet-stream' },
+      body: bytes as any,
+    });
+    
+    if (!res.ok) {
+      const txt = await res.text();
+      throw new Error(`API Relay failed: ${res.status} ${txt}`);
+    }
+    
+    const data = await res.json();
+    if (!data.blobId) throw new Error('API Relay failed to return blobId');
+    
+    onProgress?.({ status: 'success', message: `Stored via Relay ✓ (${data.blobId.slice(0, 12)}…)` });
+    return {
+      blobId: data.blobId,
+      objectId: data.objectId || '',
+      endEpoch: data.endEpoch || epochs,
+    };
+  }
 }
 
 // ---------------------------------------------------------------------------

@@ -52,7 +52,7 @@ export async function uploadOnChain(
     bytes = new TextEncoder().encode(JSON.stringify(data));
   }
 
-  return uploadBytesToWalrus(bytes, signer, epochs, (p) =>
+  return await uploadBytesToWalrus(bytes, signer, epochs, (p) =>
     onProgress?.({ message: p.message ?? `Status: ${p.status}` }),
   );
 }
