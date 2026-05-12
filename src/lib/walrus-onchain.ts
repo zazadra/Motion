@@ -1,57 +1,36 @@
 /**
  * Walrus On-Chain Integration
- *
- * Bridges the official Walrus SDK upload (wallet-signed) with
- * the Sui Move smart contracts for form/submission indexing.
+ * - Tatum Sui RPC for reliable chain queries
+ * - Move contract interactions for form/submission indexing
  */
 
 import type { WalrusUploadResponse } from '@/types/walform';
 import type { WalrusSigner } from '@/lib/walrus';
 import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from '@mysten/sui/jsonRpc';
-
-
-// ---------------------------------------------------------------------------
-// Constants
-// ---------------------------------------------------------------------------
+import { getSuiRpcUrl } from '@/lib/walrus';
 
 export const WALFORM_PACKAGE_ID: string =
   '0x56d0c64c632b581c6efc3fa7b6f058f3d1cdbd1d83fb7399a9da2cac48267e3f';
 
 // ---------------------------------------------------------------------------
-// Sui client (for read-only chain queries — no wallet needed)
+// Tatum-powered Sui client
 // ---------------------------------------------------------------------------
 
 let _suiClient: SuiJsonRpcClient | null = null;
 
-/** Returns a singleton Sui JSON-RPC client for read-only chain queries. */
+/** Returns a singleton Sui JSON-RPC client, preferring Tatum RPC for reliability. */
 export function getSuiClient(): SuiJsonRpcClient {
   if (!_suiClient) {
-    _suiClient = new SuiJsonRpcClient({
-      url: getJsonRpcFullnodeUrl('mainnet'),
-      network: 'mainnet',
-    });
+    const url = getSuiRpcUrl(); // Uses Tatum if NEXT_PUBLIC_TATUM_API_KEY is set
+    _suiClient = new SuiJsonRpcClient({ url, network: 'mainnet' });
   }
   return _suiClient;
 }
-
 
 // ---------------------------------------------------------------------------
 // Upload entry point
 // ---------------------------------------------------------------------------
 
-/**
- * Upload arbitrary data to Walrus Mainnet using the official SDK.
- *
- * The wallet (via `signer`) pays for storage in WAL/SUI tokens.
- * Two wallet signature popups will appear:
- *   1. Register blob on-chain
- *   2. Certify blob availability
- *
- * @param data          JSON-serializable value, Uint8Array, Blob, or File
- * @param signer        Wallet signer (address + signAndExecute callback)
- * @param epochs        Storage duration (default 3 ≈ ~3-4 months)
- * @param onProgress    Optional UI progress callback
- */
 export async function uploadOnChain(
   data: unknown,
   signer: WalrusSigner,
@@ -64,7 +43,6 @@ export async function uploadOnChain(
 
   const { uploadBytesToWalrus } = await import('@/lib/walrus');
 
-  // Serialise to bytes
   let bytes: Uint8Array;
   if (data instanceof Uint8Array) {
     bytes = data;
@@ -79,9 +57,6 @@ export async function uploadOnChain(
   );
 }
 
-/**
- * Convenience wrapper for JSON uploads.
- */
 export async function uploadJsonOnChain<T>(
   data: T,
   signer: WalrusSigner,
@@ -95,12 +70,7 @@ export async function uploadJsonOnChain<T>(
 // Sui Move contract interactions
 // ---------------------------------------------------------------------------
 
-/** Creates a Form indexing object on Sui chain. */
-export async function createFormObject(
-  formId: string,
-  blobId: string,
-  _ownerAddress: string,
-) {
+export async function createFormObject(formId: string, blobId: string, _ownerAddress: string) {
   const { Transaction } = await import('@mysten/sui/transactions');
   const txb = new Transaction();
   txb.moveCall({
@@ -114,7 +84,6 @@ export async function createFormObject(
   return txb;
 }
 
-/** Creates a Submission indexing object on Sui chain. */
 export async function createSubmissionObject(
   formId: string,
   blobId: string,

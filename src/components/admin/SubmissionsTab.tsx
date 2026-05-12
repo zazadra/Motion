@@ -5,9 +5,7 @@ import { readJsonFromWalrus, getWalrusScanUrl, uploadJsonToWalrus, getWalrusBlob
 import { dAppKit } from '@/app/dapp-kit';
 import { getSubIds, getAllSubIds } from '@/lib/fields';
 import { getIndexedBlobIds, onNewSubmission } from '@/lib/submission-index';
-import { getCachedSubIds, getCachedFormIds } from '@/lib/form-registry';
-import { getFormRegistry, getSuiNativeSubmissions } from '@/lib/registry';
-import { WALFORM_PACKAGE_ID } from '@/lib/walrus-onchain';
+import { getCachedFormIds } from '@/lib/form-registry';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { FormConfig } from '@/types/walform';
 import dynamic from 'next/dynamic';
@@ -85,7 +83,6 @@ export function SubmissionsTab({ ownerAddress, formBlobId: initialFormBlobId, on
     let allIds: string[] = [
       ...getIndexedBlobIds(),
       ...getAllSubIds(),
-      ...getCachedSubIds(ownerAddress),
       ...(selectedFormId ? getSubIds(selectedFormId) : []),
     ];
     allIds = [...new Set(allIds)];
@@ -138,51 +135,45 @@ export function SubmissionsTab({ ownerAddress, formBlobId: initialFormBlobId, on
     });
   }, [selectedFormId]);
 
-  // -- On-chain sync: scan blobs owned by admin wallet ----------------
+
+  // -- Sync: server registry (primary) + localStorage (fallback) ----------
   const syncFromChain = useCallback(async (isAuto = false) => {
     if (typeof window === 'undefined' || !ownerAddress) return;
     if (!isAuto) setSyncing(true);
-    
-    try {
-      // 1. Get all forms we care about
-      let formIds: string[] = [];
-      if (selectedFormId) {
-        // If filtering, only sync the specific form
-        formIds = [selectedFormId];
-      } else {
-        // Otherwise, sync all owned forms
-        formIds = getCachedFormIds(ownerAddress);
-        if (formIds.length === 0) {
-          // Quick scan for forms if cache is empty
-          const { scanOwnedBlobs } = await import('@/lib/form-registry');
-          const { forms } = await scanOwnedBlobs(ownerAddress);
-          formIds = forms.map(f => f.publishedBlobId!).filter(Boolean);
-        }
-      }
 
+    try {
       const allSubIds = new Set<string>();
 
-      // 2. Try Sui Native First (if package deployed)
-      if (WALFORM_PACKAGE_ID !== '0x0') {
-        console.log('[Sync] Querying Sui Native objects...');
-        const nativeIds = await getSuiNativeSubmissions(ownerAddress, WALFORM_PACKAGE_ID, selectedFormId || undefined);
-        nativeIds.forEach(id => allSubIds.add(id));
+      // 1. PRIMARY: Server-side registry (works across all devices/browsers)
+      const formIds = selectedFormId
+        ? [selectedFormId]
+        : getCachedFormIds(ownerAddress);
+
+      if (formIds.length > 0) {
+        const registryResults = await Promise.allSettled(
+          formIds.map(fid =>
+            fetch(`/api/registry?formId=${encodeURIComponent(fid)}`)
+              .then(r => r.json())
+              .then((d: { submissionBlobIds?: string[] }) => d.submissionBlobIds ?? [])
+          )
+        );
+        registryResults.forEach(r => {
+          if (r.status === 'fulfilled') r.value.forEach((id: string) => allSubIds.add(id));
+        });
+        console.log(`[Sync] Server registry returned ${allSubIds.size} submission IDs`);
       }
 
-      // 3. Registry Fallback/Merge
-      console.log(`[Sync] Fetching registries for ${formIds.length} forms...`);
-      const registries = await Promise.all(
-        formIds.map(fid => getFormRegistry(ownerAddress, fid))
-      );
-      registries.forEach(r => {
-        r?.submissionBlobIds.forEach(id => allSubIds.add(id));
-      });
+      // 2. FALLBACK: localStorage (same-browser fast path — catches recent submissions before server sync)
+      const localIds = selectedFormId
+        ? getSubIds(selectedFormId)
+        : getAllSubIds();
+      localIds.forEach(id => allSubIds.add(id));
 
-      // 3. Filter for new ones
+      // 3. Fetch only IDs we haven't loaded yet
       const newIds = Array.from(allSubIds).filter(id => !loadedIdsRef.current.has(id));
-      
+
       if (newIds.length > 0) {
-        console.log(`[Sync] Fetching ${newIds.length} new submissions...`);
+        console.log(`[Sync] Fetching ${newIds.length} new submission blobs from Walrus...`);
         const results = await Promise.allSettled(
           newIds.map(id => readJsonFromWalrus<Submission>(id).then(s => ({ ...s, blobId: id })))
         );
@@ -204,7 +195,11 @@ export function SubmissionsTab({ ownerAddress, formBlobId: initialFormBlobId, on
               seen.add(s.id);
               return true;
             });
-            return deduped.sort((a, b) => b.timestamp - a.timestamp);
+            // Apply form filter
+            const filtered = selectedFormId
+              ? deduped.filter(s => s.formId === selectedFormId || s.formBlobId === selectedFormId)
+              : deduped;
+            return filtered.sort((a, b) => b.timestamp - a.timestamp);
           });
         }
       }
@@ -213,7 +208,8 @@ export function SubmissionsTab({ ownerAddress, formBlobId: initialFormBlobId, on
     }
 
     setSyncing(false);
-  }, [ownerAddress, selectedFormId]);
+  }, [ownerAddress, selectedFormId]); // eslint-disable-line react-hooks/exhaustive-deps
+
 
   // -- Initial load ----------------------------------------------------
   const fullLoad = useCallback(async () => {

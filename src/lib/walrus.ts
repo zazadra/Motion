@@ -1,21 +1,15 @@
 /**
- * Walrus Upload – Official SDK approach
+ * Walrus Upload – Official SDK (writeBlobFlow + Upload Relay)
  *
- * Uses @mysten/walrus `writeFilesFlow` with the official Mysten Upload Relay.
- *
- * Flow (browser, wallet-signed):
- *   1. encode()        – WASM encodes the blob locally, produces blobId
- *   2. register tx     – wallet signs a Sui tx to register blob on-chain (costs WAL/SUI)
- *   3. upload()        – relay receives encoded slivers (no extra wallet popup)
- *   4. certify tx      – wallet signs a Sui tx to certify availability
- *
- * The Upload Relay offloads writing ~2200 shard requests to the relay server,
- * so the browser only needs 4 round-trips (2 wallet signatures).
- *
- * Reads use the public aggregator — no wallet needed.
+ * Key fixes vs previous version:
+ *  - Added uploadRelay config → routes through relay instead of 2200+ direct storage node requests
+ *  - Switched writeFilesFlow → writeBlobFlow (simpler, same result for raw bytes)
+ *  - Removed incorrect `digest: blobId` arg from flow.upload() — digest is for resume only
  */
 
 import type { WalrusUploadResponse } from '@/types/walform';
+import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from '@mysten/sui/jsonRpc';
+import { WalrusClient } from '@mysten/walrus';
 
 export const NETWORK = 'mainnet' as const;
 
@@ -23,13 +17,8 @@ export const NETWORK = 'mainnet' as const;
 // Constants
 // ---------------------------------------------------------------------------
 
-/** Official Mysten Labs Upload Relay – DNS verified: 34.120.182.114 */
 const UPLOAD_RELAY_HOST = 'https://upload-relay.mainnet.walrus.space';
-
-/** Official Mysten Labs Aggregator for reads */
 const AGGREGATOR = 'https://aggregator.walrus-mainnet.walrus.space';
-
-/** Public fallback aggregator */
 const AGGREGATORS = [
   AGGREGATOR,
   'https://walrus-mainnet-aggregator.nodes.guru',
@@ -38,6 +27,18 @@ const AGGREGATORS = [
 ];
 
 export const WALRUS_AGGREGATOR = AGGREGATOR;
+
+// ---------------------------------------------------------------------------
+// Tatum RPC helper
+// ---------------------------------------------------------------------------
+
+export function getSuiRpcUrl(): string {
+  const tatumKey = process.env.NEXT_PUBLIC_TATUM_API_KEY;
+  if (tatumKey) {
+    return `https://api.tatum.io/v3/blockchain/node/sui-mainnet/${tatumKey}`;
+  }
+  return getJsonRpcFullnodeUrl(NETWORK);
+}
 
 // ---------------------------------------------------------------------------
 // Types
@@ -52,21 +53,15 @@ export interface UploadProgress {
 }
 
 export interface WalrusSigner {
-  /**
-   * Sign and execute a Sui transaction.
-   * Returns the transaction digest on success, throws on failure.
-   */
   signAndExecute(transaction: unknown): Promise<{ digest: string }>;
-  /** The Sui wallet address this signer represents */
   address: string;
 }
 
 // ---------------------------------------------------------------------------
-// Response parser (handles both SDK and raw HTTP shapes)
+// Response parser
 // ---------------------------------------------------------------------------
 
 export function parseWalrusResponse(result: Record<string, unknown>): WalrusUploadResponse {
-  // Shape from @mysten/walrus SDK writeBlob / writeFiles
   if (typeof result.blobId === 'string') {
     return {
       blobId: result.blobId,
@@ -74,10 +69,8 @@ export function parseWalrusResponse(result: Record<string, unknown>): WalrusUplo
       endEpoch: result.endEpoch as number | undefined,
     };
   }
-  // Shape from raw HTTP publisher (legacy fallback)
   if (result.newlyCreated) {
-    const blob = (result.newlyCreated as Record<string, unknown>)
-      .blobObject as Record<string, unknown>;
+    const blob = (result.newlyCreated as Record<string, unknown>).blobObject as Record<string, unknown>;
     return {
       blobId: blob.blobId as string,
       objectId: blob.id as string,
@@ -96,24 +89,30 @@ export function parseWalrusResponse(result: Record<string, unknown>): WalrusUplo
 }
 
 // ---------------------------------------------------------------------------
-// Main upload – uses official SDK + Upload Relay + wallet signer
+// Singleton WalrusClient (avoids re-loading WASM on every call)
 // ---------------------------------------------------------------------------
 
-import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from '@mysten/sui/jsonRpc';
-import { WalrusClient, WalrusFile } from '@mysten/walrus';
+let _walrusClient: WalrusClient | null = null;
 
-/**
- * Upload bytes to Walrus Mainnet using the @mysten/walrus SDK.
- *
- * This flow requires two wallet signatures (Register & Certify).
- * If the blob is already certified (or registered), we detect empty transactions
- * to prevent Sui RPC errors ("no balance changes").
- *
- * @param data        Raw bytes, string, File, or Blob to store
- * @param signer      Wallet signer
- * @param epochs      Storage duration
- * @param onProgress  Optional progress callback
- */
+function getWalrusClient(): WalrusClient {
+  if (!_walrusClient) {
+    const suiClient = new SuiJsonRpcClient({ url: getSuiRpcUrl(), network: NETWORK });
+    _walrusClient = new WalrusClient({
+      network: NETWORK,
+      suiClient: suiClient as any,
+      // FIX: Upload relay routes through relay server instead of hitting 2200+ storage nodes
+      uploadRelay: {
+        host: UPLOAD_RELAY_HOST,
+      },
+    });
+  }
+  return _walrusClient;
+}
+
+// ---------------------------------------------------------------------------
+// Main upload – writeBlobFlow (simpler + faster than writeFilesFlow)
+// ---------------------------------------------------------------------------
+
 export async function uploadBytesToWalrus(
   data: string | Uint8Array | File | Blob,
   signer: WalrusSigner,
@@ -132,61 +131,47 @@ export async function uploadBytesToWalrus(
 
   onProgress?.({ status: 'encoding', message: 'Encoding data...' });
 
-  const suiClient = new SuiJsonRpcClient({ url: getJsonRpcFullnodeUrl(NETWORK), network: NETWORK });
-  const walrusClient = new WalrusClient({
-    network: NETWORK,
-    suiClient: suiClient as any, // Walrus expects a SuiClient-like object, and SuiJsonRpcClient implements most of it.
-  });
-
-  const flow = walrusClient.writeFilesFlow({
-    files: [WalrusFile.from({
-      contents: bytes,
-      identifier: 'file',
-      tags: { 'Content-Type': (data as File).type || 'application/octet-stream' }
-    })]
-  });
+  const walrusClient = getWalrusClient();
+  // FIX: Use writeBlobFlow (raw bytes) instead of writeFilesFlow (file wrapper)
+  const flow = walrusClient.writeBlobFlow({ blob: bytes });
 
   const encoded = await flow.encode();
   const blobId = encoded.blobId;
 
-  // 0. Pre-check: if already on Walrus, skip everything
+  // Pre-check: if already on Walrus, skip wallet popups
   try {
     const existing = await readBlobFromWalrus(blobId);
     if (existing) {
       onProgress?.({ status: 'success', message: 'Already on Walrus ✓' });
       return { blobId, objectId: '', endEpoch: 0 };
     }
-  } catch { /* ignore */ }
+  } catch { /* not found, continue with upload */ }
 
-  // 1. Register
+  // 1. Register (wallet popup #1)
   onProgress?.({ status: 'registering', message: 'Waiting for wallet approval (register)...' });
   const registerTx = flow.register({ owner: signer.address, deletable: false, epochs });
-  
-  // If the blob is already certified, the transaction will have no commands.
-  // We must skip signing empty transactions to prevent Sui errors.
+
   if (registerTx && registerTx.getData().commands.length > 0) {
     try {
       await signer.signAndExecute(registerTx);
     } catch (err: any) {
       const msg = err.message || String(err);
-      if (msg.includes('User rejected')) {
-        onProgress?.({ status: 'failed', message: 'Upload cancelled by user (register)' });
+      if (msg.includes('User rejected') || msg.includes('rejected')) {
+        onProgress?.({ status: 'failed', message: 'Upload cancelled by user.' });
         throw err;
       }
-      // "no balance changes" means the blob is likely already registered/paid for
-      if (msg.includes('no balance changes')) {
-        console.info('Register skipped: Blob already exists on-chain.');
-      } else {
-        console.warn('Register transaction failed or skipped:', err);
+      if (!msg.includes('no balance changes')) {
+        console.warn('Register tx warning (may be pre-registered):', msg);
       }
     }
   }
 
-  // 2. Upload to storage nodes
-  onProgress?.({ status: 'uploading', message: 'Uploading encoded slivers...' });
-  const uploaded = await flow.upload({ digest: blobId });
+  // 2. Upload via relay (no wallet popup — relay handles storage node distribution)
+  onProgress?.({ status: 'uploading', message: 'Uploading to Walrus network...' });
+  // FIX: No `digest` argument — that is only for resume from a previous encode step
+  const uploaded = await flow.upload();
 
-  // 3. Certify
+  // 3. Certify (wallet popup #2)
   onProgress?.({ status: 'certifying', message: 'Waiting for wallet approval (certify)...' });
   const certifyTx = flow.certify();
   if (certifyTx && certifyTx.getData().commands.length > 0) {
@@ -194,34 +179,31 @@ export async function uploadBytesToWalrus(
       await signer.signAndExecute(certifyTx);
     } catch (err: any) {
       const msg = err.message || String(err);
-      if (msg.includes('User rejected')) {
-        onProgress?.({ status: 'failed', message: 'Upload cancelled by user (certify)' });
+      if (msg.includes('User rejected') || msg.includes('rejected')) {
+        onProgress?.({ status: 'failed', message: 'Upload cancelled by user.' });
         throw err;
       }
-      if (msg.includes('no balance changes')) {
-        console.info('Certify skipped: Blob already certified.');
-      } else {
-        console.warn('Certify transaction failed or skipped:', err);
+      if (!msg.includes('no balance changes')) {
+        console.warn('Certify tx warning (may be pre-certified):', msg);
       }
     }
   }
 
-  // The SDK might return an extended Blob ID object id or Base64url + suffix. 
-  // We extract exactly 43 characters which represents the true Walrus Blob ID.
-  const rawBlobId = uploaded.blobId ?? '';
-  const parsedBlobId = typeof rawBlobId === 'string' ? rawBlobId.slice(0, 43) : String(rawBlobId).slice(0, 43);
+  // Extract clean 43-char blobId
+  const rawBlobId = uploaded.blobId ?? blobId;
+  const cleanBlobId = rawBlobId.slice(0, 43);
 
-  onProgress?.({ status: 'success', message: `Stored on Walrus ✓ (blobId: ${parsedBlobId.slice(0, 12)}…)` });
-  
+  onProgress?.({ status: 'success', message: `Stored on Walrus ✓ (${cleanBlobId.slice(0, 12)}…)` });
+
   return {
-    blobId: parsedBlobId,
+    blobId: cleanBlobId,
     objectId: uploaded.blobObjectId ?? '',
-    endEpoch: 0, // endEpoch is no longer in WriteBlobStepUploaded, so we default to 0
+    endEpoch: 0,
   };
 }
 
 // ---------------------------------------------------------------------------
-// Convenience wrappers (backward-compatible API surface)
+// Convenience wrappers
 // ---------------------------------------------------------------------------
 
 export async function uploadJsonToWalrus<T>(
@@ -244,14 +226,11 @@ export async function uploadFileToWalrus(
 }
 
 // ---------------------------------------------------------------------------
-// Read operations (public aggregator – no wallet needed)
+// Read operations (no wallet needed)
 // ---------------------------------------------------------------------------
 
 export async function readBlobFromWalrus(blobId: string): Promise<Uint8Array> {
-  // Truncate to 43 chars (valid base64url length for 32-byte Walrus Blob ID)
-  // This fixes broken submissions that accidentally stored 52-char IDs from the SDK earlier.
   const cleanBlobId = blobId.slice(0, 43);
-
   for (const agg of AGGREGATORS) {
     try {
       const res = await fetch(`${agg}/v1/blobs/${cleanBlobId}`, {
@@ -262,7 +241,7 @@ export async function readBlobFromWalrus(blobId: string): Promise<Uint8Array> {
       continue;
     }
   }
-  throw new Error(`Failed to read blob "${cleanBlobId}" from all aggregators`);
+  throw new Error(`Blob "${cleanBlobId}" not found on any aggregator`);
 }
 
 export async function readJsonFromWalrus<T>(blobId: string, retries = 3): Promise<T> {
@@ -280,8 +259,7 @@ export async function readJsonFromWalrus<T>(blobId: string, retries = 3): Promis
 }
 
 export function getWalrusBlobUrl(blobId: string): string {
-  const cleanBlobId = blobId.slice(0, 43);
-  return `${AGGREGATOR}/v1/blobs/${cleanBlobId}`;
+  return `${AGGREGATOR}/v1/blobs/${blobId.slice(0, 43)}`;
 }
 
 export function getWalrusScanUrl(blobId: string): string {

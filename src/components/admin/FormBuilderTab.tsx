@@ -368,6 +368,18 @@ export function FormBuilderTab({ config, onChange, ownerAddress }: {
       onChange(cfg);
       saveAdminConfig(cfg);
       cacheFormId(ownerAddress, blobId);
+
+      // Register server-side so My Forms works across browsers/devices
+      try {
+        await fetch('/api/registry/forms', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ownerAddress, formBlobId: blobId }),
+        });
+      } catch (regErr) {
+        console.warn('[Registry] Forms registration failed (non-critical):', regErr);
+      }
+
       setPubUrl(`${window.location.origin}/?form=${blobId}`);
       setPubBlobId(blobId);
     } catch (e) { 

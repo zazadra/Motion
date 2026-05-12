@@ -78,19 +78,37 @@ export function MyFormsTab({
     if (!ownerAddress) return;
     setIsSyncing(true);
     try {
-      const { WALFORM_PACKAGE_ID } = await import('@/lib/walrus-onchain');
-      const { getSuiNativeForms } = await import('@/lib/registry');
-      
-      let chainBlobIds: string[] = [];
-      
-      if (WALFORM_PACKAGE_ID !== '0x0') {
-        console.log('[Sync] Discovering forms via Sui Native...');
-        chainBlobIds = await getSuiNativeForms(ownerAddress, WALFORM_PACKAGE_ID);
-      } else {
-        console.log('[Sync] Falling back to blob scan (Legacy)...');
-        const { forms: legacyForms } = await scanOwnedBlobs(ownerAddress);
-        chainBlobIds = legacyForms.map(f => f.publishedBlobId || f.id).filter(Boolean) as string[];
+      const allBlobIds = new Set<string>();
+
+      // 1. PRIMARY: Server-side registry
+      try {
+        const res = await fetch(`/api/registry/forms?owner=${encodeURIComponent(ownerAddress)}`);
+        const data = await res.json() as { formBlobIds?: string[] };
+        (data.formBlobIds ?? []).forEach(id => allBlobIds.add(id));
+        console.log(`[MyForms] Server registry: ${allBlobIds.size} forms`);
+      } catch (e) {
+        console.warn('[MyForms] Server registry unavailable:', e);
       }
+
+      // 2. FALLBACK: localStorage cache
+      getCachedFormIds(ownerAddress).forEach(id => allBlobIds.add(id));
+
+      // 3. FALLBACK: On-chain scan
+      if (allBlobIds.size === 0) {
+        const { WALFORM_PACKAGE_ID } = await import('@/lib/walrus-onchain');
+        const { getSuiNativeForms } = await import('@/lib/registry');
+        if (WALFORM_PACKAGE_ID !== '0x0') {
+          console.log('[Sync] Discovering forms via Sui Native...');
+          const chainIds = await getSuiNativeForms(ownerAddress, WALFORM_PACKAGE_ID);
+          chainIds.forEach(id => allBlobIds.add(id));
+        } else {
+          console.log('[Sync] Falling back to blob scan (Legacy)...');
+          const { forms: legacyForms } = await scanOwnedBlobs(ownerAddress);
+          legacyForms.map(f => f.publishedBlobId || f.id).filter(Boolean).forEach(id => allBlobIds.add(id!));
+        }
+      }
+
+      const chainBlobIds = [...allBlobIds];
 
       if (chainBlobIds.length > 0) {
         const results = await Promise.allSettled(

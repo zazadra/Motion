@@ -679,8 +679,22 @@ export default function Home() {
         }
       );
 
+      // Register in localStorage (same-browser fast path)
       const { publishSubmission } = await import('@/lib/submission-index');
       publishSubmission(blobId, formBlobId);
+
+      // Register in server-side registry so admin can discover from ANY device
+      setSubmitMsg('Registering submission...');
+      try {
+        await fetch('/api/registry', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ formBlobId, submissionBlobId: blobId }),
+        });
+      } catch (regErr) {
+        // Non-fatal: admin can still find via localStorage BroadcastChannel on same browser
+        console.warn('[Registry] Failed to register submission server-side:', regErr);
+      }
 
       setSubmittedBlobId(blobId);
       setStatus('success');

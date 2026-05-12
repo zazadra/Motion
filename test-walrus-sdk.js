@@ -1,20 +1,18 @@
-const { WalrusClient, MAINNET_WALRUS_PACKAGE_CONFIG } = require('@mysten/walrus');
-const { SuiJsonRpcClient, getJsonRpcFullnodeUrl } = require('@mysten/sui/jsonRpc');
+const { WalrusClient, WalrusFile } = require('@mysten/walrus');
 
 async function test() {
-  try {
-    const suiClient = new SuiJsonRpcClient({ url: getJsonRpcFullnodeUrl('mainnet') });
-    const walrusClient = new WalrusClient({
-      network: 'mainnet',
-      suiClient: suiClient,
-      packageConfig: MAINNET_WALRUS_PACKAGE_CONFIG
-    });
-    console.log("Uploading blob...");
-    const bytes = new TextEncoder().encode("Hello Walrus Mainnet from Node.js using packageConfig!");
-    const info = await walrusClient.storeBlob(bytes, { epochs: 1 });
-    console.log("Success!", info);
-  } catch (err) {
-    console.error("Error:", err);
-  }
+  const client = new WalrusClient({ network: 'testnet' });
+  const flow = client.writeFilesFlow({
+    files: [WalrusFile.from({
+      contents: Buffer.from('hello world'),
+      identifier: 'test'
+    })]
+  });
+
+  console.log('Flow before encode:', Object.keys(flow));
+  await flow.encode();
+  console.log('Flow after encode:', Object.keys(flow));
+  console.log('Blob ID:', flow.blobId);
 }
-test();
+
+test().catch(console.error);
