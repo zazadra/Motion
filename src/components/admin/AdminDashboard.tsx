@@ -93,16 +93,39 @@ function SubmissionDetail({ sub, idx, onStatusChange }: { sub: Submission; idx: 
       <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
         <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-3)', marginBottom: 14, flexShrink: 0 }}>ANSWERS</div>
         <div className="custom-scrollbar" style={{ display: 'flex', flexDirection: 'column', gap: 16, maxHeight: '45vh', overflowY: 'auto', paddingRight: 8 }}>
-          {Object.entries(sub.data).map(([key, val]) => (
-            <div key={key}>
-              <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-3)', marginBottom: 4 }}>
-                {key.replace(/_/g, ' ')}
+          {Object.entries(sub.data).map(([key, val]) => {
+            const s = String(val ?? '');
+            const isUrl = s.startsWith('http');
+            const isBlob = s.length >= 43 && !s.includes(' ') && !s.startsWith('0x');
+            const isImgKey = /image|screenshot|visual|proof|file/i.test(key);
+            
+            return (
+              <div key={key}>
+                <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-3)', marginBottom: 4 }}>
+                  {key.replace(/_/g, ' ')}
+                </div>
+                <div style={{ fontSize: 14, color: 'var(--text-1)', lineHeight: 1.6 }}>
+                  {isUrl ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      <a href={s} target="_blank" rel="noreferrer" style={{ color: '#8b5cf6', textDecoration: 'underline', wordBreak: 'break-all' }}>{s}</a>
+                      {(/\.(jpg|jpeg|png|webp|gif|svg)$/i.test(s) || s.includes('aggregator')) && (
+                        <img src={s} alt="" style={{ maxWidth: '100%', borderRadius: 8, marginTop: 4, border: '1px solid var(--border)' }} />
+                      )}
+                    </div>
+                  ) : isBlob ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      <a href={`https://aggregator.walrus-mainnet.walrus.space/v1/blobs/${s.slice(0, 43)}`} target="_blank" rel="noreferrer" style={{ color: '#8b5cf6', textDecoration: 'underline', wordBreak: 'break-all' }}>{s}</a>
+                      {isImgKey && (
+                        <img src={`https://aggregator.walrus-mainnet.walrus.space/v1/blobs/${s.slice(0, 43)}`} alt="" style={{ maxWidth: '100%', borderRadius: 8, marginTop: 4, border: '1px solid var(--border)' }} />
+                      )}
+                    </div>
+                  ) : (
+                    Array.isArray(val) ? val.join(', ') : s || '—'
+                  )}
+                </div>
               </div>
-              <div style={{ fontSize: 14, color: 'var(--text-1)', lineHeight: 1.6 }}>
-                {Array.isArray(val) ? val.join(', ') : String(val ?? '—')}
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
