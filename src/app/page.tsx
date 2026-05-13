@@ -730,22 +730,21 @@ export default function Home() {
           top: 0,
           left: 0
         }}>
-          <div style={{ display:'flex', alignItems:'center', gap:'16px' }}>
+          <div style={{ display:'flex', alignItems:'center', gap:'12px' }}>
             <motion.img 
               src="/walform-mascot.png" 
               alt="Walform Logo" 
               style={{ 
-                height: '54px', 
+                height: '48px', 
                 width: 'auto',
                 filter: 'drop-shadow(0 0 20px rgba(124,58,237,0.3))'
               }}
               whileHover={{ scale: 1.05, rotate: -2 }}
             />
+            <span style={{ fontSize:'24px', fontWeight:900, letterSpacing:'-0.03em', color: '#fff' }}>Walform</span>
           </div>
           <div style={{ display:'flex', gap:'16px' }}>
-            <a href="/builder" className="btn btn-primary" style={{ padding: '12px 24px', fontSize: '15px' }}>
-              Enter Walform
-            </a>
+            {/* Enter Walform button removed as requested */}
           </div>
         </header>
 
@@ -842,7 +841,7 @@ export default function Home() {
                   Native Walrus Infrastructure
                 </motion.div>
                 
-                <h1 style={{ fontSize:'clamp(48px, 8vw, 96px)', fontWeight:900, letterSpacing:'-0.05em', lineHeight:0.95, marginBottom:'32px', color: '#fff' }}>
+                <h1 style={{ fontSize:'clamp(48px, 8vw, 96px)', fontWeight:900, letterSpacing:'-0.05em', lineHeight:1.1, marginBottom:'32px', color: '#fff', paddingBottom: '10px' }}>
                   <motion.span 
                     initial={{ opacity: 0, filter: 'blur(10px)' }} 
                     animate={{ opacity: 1, filter: 'blur(0px)' }} 
@@ -855,7 +854,7 @@ export default function Home() {
                     initial={{ opacity: 0, x: -20 }} 
                     animate={{ opacity: 1, x: 0 }} 
                     transition={{ duration: 0.8, delay: 0.6 }}
-                    style={{ background: 'linear-gradient(135deg, var(--accent-2) 0%, var(--cyan) 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', display: 'block' }}
+                    style={{ background: 'linear-gradient(135deg, var(--accent-2) 0%, var(--cyan) 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', display: 'block', paddingBottom: '15px' }}
                   >
                     belong to you.
                   </motion.span>
@@ -1015,12 +1014,12 @@ export default function Home() {
                       top: '50%', 
                       transform: 'translateY(-50%)', 
                       zIndex: 10,
-                      opacity: 0.3,
+                      opacity: 0.5,
                       fontSize: '20px',
                       color: 'var(--accent-2)',
                       pointerEvents: 'none'
                     }}>
-                      -
+                      →
                     </div>
                   )}
                 </motion.div>
@@ -1032,7 +1031,7 @@ export default function Home() {
           <section style={{ width: '100%', maxWidth: '1200px', margin: '200px auto 0', padding: '0 24px' }}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '24px' }}>
               {([
-                { title: '100% On-Chain', desc: 'Forms, submissions, and media are stored natively on decentralized infrastructure without relying on centralized databases.', icon: '-' },
+                { title: '100% On-Chain', desc: 'Forms, submissions, and media are stored natively on decentralized infrastructure without relying on centralized databases.', icon: '🔗' },
                 { title: 'Walrus Durability', desc: 'Powered by Walrus for resilient, permanent, and scalable decentralized storage.', image: '/walrus-official.png', imageStyle: { mixBlendMode: 'screen' } as any },
                 { title: 'Sui Performance', desc: 'Built on Sui for fast interactions, smooth wallet UX, and scalable Web3 experiences.', image: 'https://cryptologos.cc/logos/sui-sui-logo.png?v=032' }
               ] as any[]).map((card, i) => (
@@ -1186,7 +1185,7 @@ export default function Home() {
                     }}
                   >
                     {label}
-                    <span style={{ opacity: 0.7, fontSize: '14px', transition: 'transform 0.25s' }}>-</span>
+                    <span style={{ opacity: 0.7, fontSize: '18px', transition: 'transform 0.25s', fontWeight: 900 }}>→</span>
                   </a>
                 );
 
