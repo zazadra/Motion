@@ -344,14 +344,29 @@ export function FormBuilderTab({ config, onChange, ownerAddress }: {
           console.log('[Sui] Form object created:', txResult);
           
           // Extract the newly created Form object ID from the tx result
-          const objectChanges = (txResult as any)?.objectChanges ?? (txResult as any)?.Transaction?.objectChanges ?? [];
+          let objectChanges = (txResult as any)?.objectChanges ?? (txResult as any)?.Transaction?.objectChanges;
+          
+          if (!objectChanges) {
+             const digest = (txResult as any)?.Transaction?.digest ?? (txResult as any)?.digest;
+             if (digest) {
+                const { getSuiClient } = await import('@/lib/walrus-onchain');
+                const client = getSuiClient() as any;
+                const txBlock = client.waitForTransactionBlock 
+                  ? await client.waitForTransactionBlock({ digest, options: { showObjectChanges: true } })
+                  : await client.waitForTransaction({ digest, options: { showObjectChanges: true } });
+                objectChanges = txBlock.objectChanges;
+             }
+          }
+          
+          objectChanges = objectChanges ?? [];
           const created = objectChanges.find((c: any) => c.type === 'created' && c.objectType?.includes('::walform::Form'));
           if (created?.objectId) {
             suiObjectId = created.objectId;
             cfg.publishedSuiObjectId = suiObjectId;
             console.log('[Sui] Form object ID captured:', suiObjectId);
           } else {
-             throw new Error('Failed to capture Sui Form object ID from transaction result.');
+             console.error('[Sui] Tx Result:', txResult, 'Object Changes:', objectChanges);
+             throw new Error('Failed to capture Sui Form object ID from transaction result. Ensure your wallet approves the transaction.');
           }
         } else {
           throw new Error('WALFORM_PACKAGE_ID is not configured.');
