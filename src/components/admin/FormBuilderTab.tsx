@@ -335,29 +335,42 @@ export function FormBuilderTab({ config, onChange, ownerAddress }: {
           const configJson = JSON.stringify(cfg);
           const txb = await createFormObject(cfg.id, configJson, ownerAddress);
           
-          setPubMsg('Step 2/2: Awaiting wallet signature…');
+          setPubMsg('Step 2/2: Awaiting wallet signature...');
           const { dAppKit } = await import('@/app/dapp-kit');
-          const txResult = await dAppKit.signAndExecuteTransaction({ 
-            transaction: txb as any,
-            options: { showEffects: true, showObjectChanges: true }
-          } as any);
-          console.log('[Sui] Form object created:', txResult);
-          
-          // Extract the newly created Form object ID from the tx result
-          let objectChanges = (txResult as any)?.objectChanges ?? (txResult as any)?.Transaction?.objectChanges;
-          
-          if (!objectChanges) {
-             const digest = (txResult as any)?.Transaction?.digest ?? (txResult as any)?.digest;
-             if (digest) {
-                const { getSuiClient } = await import('@/lib/walrus-onchain');
-                const client = getSuiClient() as any;
-                const txBlock = client.waitForTransactionBlock 
-                  ? await client.waitForTransactionBlock({ digest, options: { showObjectChanges: true } })
-                  : await client.waitForTransaction({ digest, options: { showObjectChanges: true } });
-                objectChanges = txBlock.objectChanges;
-             }
+          const { getSuiClient } = await import('@/lib/walrus-onchain');
+
+          // Use signTransaction + manual HTTP execute to avoid WebSocket timeout on Tatum RPC
+          const { bytes, signature } = await dAppKit.signTransaction({ transaction: txb as any } as any);
+          const client = getSuiClient() as any;
+
+          // Execute via pure HTTP - no WebSocket subscription
+          const execResult = await client.executeTransactionBlock({
+            transactionBlock: bytes,
+            signature,
+            options: { showObjectChanges: true, showEffects: true },
+            requestType: 'WaitForLocalExecution',
+          });
+          console.log('[Sui] Form object created:', execResult);
+
+          // Extract objectChanges - may be directly in result or need polling
+          let objectChanges = execResult?.objectChanges;
+
+          if (!objectChanges && execResult?.digest) {
+            const digest = execResult.digest;
+            let txBlock = null;
+            for (let i = 0; i < 15; i++) {
+              try {
+                txBlock = await client.getTransactionBlock({
+                  digest,
+                  options: { showObjectChanges: true },
+                });
+                if (txBlock?.objectChanges) break;
+              } catch (e) { /* not yet finalized, retry */ }
+              await new Promise(r => setTimeout(r, 2000));
+            }
+            objectChanges = txBlock?.objectChanges ?? [];
           }
-          
+
           objectChanges = objectChanges ?? [];
           const created = objectChanges.find((c: any) => c.type === 'created' && c.objectType?.includes('::walform::Form'));
           if (created?.objectId) {
@@ -365,8 +378,8 @@ export function FormBuilderTab({ config, onChange, ownerAddress }: {
             cfg.publishedSuiObjectId = suiObjectId;
             console.log('[Sui] Form object ID captured:', suiObjectId);
           } else {
-             console.error('[Sui] Tx Result:', txResult, 'Object Changes:', objectChanges);
-             throw new Error('Failed to capture Sui Form object ID from transaction result. Ensure your wallet approves the transaction.');
+            console.error('[Sui] execResult:', execResult, 'objectChanges:', objectChanges);
+            throw new Error('Failed to capture Sui Form object ID from transaction result.');
           }
         } else {
           throw new Error('WALFORM_PACKAGE_ID is not configured.');
