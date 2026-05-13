@@ -73,6 +73,7 @@ export async function uploadJsonOnChain<T>(
 export async function createFormObject(formId: string, configJson: string, _ownerAddress: string) {
   const { Transaction } = await import('@mysten/sui/transactions');
   const txb = new Transaction();
+  txb.setSender(_ownerAddress);
   txb.moveCall({
     target: `${WALFORM_PACKAGE_ID}::walform::create_form`,
     arguments: [
@@ -92,6 +93,7 @@ export async function createSubmissionObject(
 ) {
   const { Transaction } = await import('@mysten/sui/transactions');
   const txb = new Transaction();
+  txb.setSender(owner);
   txb.moveCall({
     target: `${WALFORM_PACKAGE_ID}::walform::register_submission`,
     arguments: [
