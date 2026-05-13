@@ -158,7 +158,7 @@ export function AdminDashboard() {
   const [tab, setTab] = useState<'responses' | 'builder'>('responses');
 
   // Forms list
-  const [forms, setForms] = useState<{ suiObjectId: string; walrusBlobId: string; formId: string; createdAt: number; title?: string }[]>([]);
+  const [forms, setForms] = useState<{ suiObjectId: string; configJson: string; formId: string; createdAt: number; title?: string }[]>([]);
   const [formsLoading, setFormsLoading] = useState(false);
   const [selectedFormId, setSelectedFormId] = useState('');
 
