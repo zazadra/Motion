@@ -18,6 +18,38 @@ interface Template {
 
 const TEMPLATES: Template[] = [
   {
+    id: 'walrus-sessions-2-feedback',
+    category: 'Events',
+    categoryColor: '#fbbf24',
+    time: '2 min',
+    featured: true,
+    title: 'Walrus Sessions 2 — Feedback Form',
+    description: 'Collect post-session feedback and attestations from participants of Walrus Sessions 2.',
+    fields: [
+      { label: 'Full Name', type: 'text' },
+      { label: 'Project Name', type: 'text' },
+      { label: 'Team Leader Email', type: 'email' },
+      { label: 'Newsletter', type: 'checkbox' },
+      { label: 'Session Feedback', type: 'textarea' }
+    ],
+    fieldCount: 7,
+    policy: 'open',
+    mode: 'wallet',
+    preset: {
+      title: 'Walrus Sessions 2 — Feedback Form',
+      description: 'Submit your feedback and project details for Walrus Sessions 2.',
+      fields: [
+        { id: 'f1', type: 'text', label: 'Full Name*', placeholder: 'Your legal name', required: true, enabled: true },
+        { id: 'f2', type: 'text', label: 'Project Name*', placeholder: 'What are you building?', required: true, enabled: true },
+        { id: 'f3', type: 'email', label: 'Team Leader Email*', placeholder: 'leader@example.com', required: true, enabled: true },
+        { id: 'f4', type: 'checkbox', label: 'I would be open to receiving your newsletter', required: false, enabled: true, attachedCheckbox: true },
+        { id: 'f5', type: 'textarea', label: 'Session Feedback', placeholder: 'What did you think of the session?', required: false, enabled: true },
+        { id: 'f6', type: 'textarea', label: 'DeepSurge Feedback', placeholder: 'Any thoughts on DeepSurge?', required: false, enabled: true },
+        { id: 'f7', type: 'checkbox', label: 'I confirm I have read, understood, and agree to the rules and regulations.', required: true, enabled: true },
+      ]
+    }
+  },
+  {
     id: 'bug-report',
     category: 'Engineering',
     categoryColor: '#22d3ee',

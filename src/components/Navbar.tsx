@@ -14,8 +14,8 @@ export function Navbar() {
   const [copied, setCopied] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
-  // Hide navbar entirely on form fill page
-  if (pathname.startsWith('/f')) return null;
+  // Hide navbar entirely on form fill page and landing page
+  if (pathname.startsWith('/f') || pathname === '/') return null;
 
   const NAV = [
     { href: '/builder', label: 'Builder' },

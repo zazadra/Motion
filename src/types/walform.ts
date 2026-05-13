@@ -13,6 +13,7 @@ export interface SessionField {
   options?: string[];   // for select
   linkText?: string;
   linkUrl?: string;
+  attachedCheckbox?: { id: string; label: string; }; // for checkboxes attached to an input field
 }
 
 export interface FormConfig {

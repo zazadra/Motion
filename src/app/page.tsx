@@ -741,10 +741,11 @@ export default function Home() {
               }}
               whileHover={{ scale: 1.05, rotate: -2 }}
             />
-            <span style={{ fontSize:'24px', fontWeight:900, letterSpacing:'-0.05em', background: 'linear-gradient(to bottom, #fff, #94a3b8)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Walform</span>
           </div>
           <div style={{ display:'flex', gap:'16px' }}>
-            {/* No Launch App button on landing page */}
+            <a href="/builder" className="btn btn-primary" style={{ padding: '12px 24px', fontSize: '15px' }}>
+              Enter Walform
+            </a>
           </div>
         </header>
 

@@ -3,7 +3,7 @@ import { usePathname } from 'next/navigation';
 import { Navbar } from './Navbar';
 
 // Hide global navbar on /admin (uses its own layout) and on /f/ routes
-const NAVBAR_EXCLUDED = ['/admin'];
+const NAVBAR_EXCLUDED: string[] = [];
 
 export function NavbarWrapper() {
   const pathname = usePathname();

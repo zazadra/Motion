@@ -15,9 +15,9 @@ const CHANNEL_NAME = 'walform:submissions';
 const ALL_KEY = 'walform:subs:ALL';
 
 /** Push a new blobId into the shared index and broadcast it to all open tabs */
-export function publishSubmission(blobId: string, formBlobId: string) {
+export async function publishSubmission(blobId: string, formBlobId: string) {
   try {
-    // 1. Persist to localStorage
+    // 1. Persist to localStorage (for instant same-browser access)
     const all = getIndexedBlobIds();
     if (!all.includes(blobId)) {
       localStorage.setItem(ALL_KEY, JSON.stringify([...all, blobId]));
@@ -36,6 +36,14 @@ export function publishSubmission(blobId: string, formBlobId: string) {
       bc.postMessage({ type: 'new_submission', blobId, formBlobId });
       bc.close();
     }
+
+    // 3. Register with server-side registry (for cross-browser/cross-device discovery)
+    fetch('/api/registry', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ formBlobId, submissionBlobId: blobId }),
+    }).catch(e => console.warn('[Index] API registration failed:', e));
+
   } catch {
     // localStorage may be unavailable (private mode, full, etc.)
   }

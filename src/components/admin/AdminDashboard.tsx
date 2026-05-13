@@ -10,7 +10,6 @@ import { loadAdminConfig, saveAdminConfig, DEFAULT_CONFIG } from '@/lib/fields';
 import { motion, AnimatePresence } from 'framer-motion';
 import dynamic from 'next/dynamic';
 
-const FormBuilderTab = dynamic(() => import('@/components/admin/FormBuilderTab').then(m => m.FormBuilderTab), { ssr: false });
 
 function shorten(a: string) { return `${a.slice(0, 6)}…${a.slice(-4)}`; }
 function shortId(id: string) { return `${id.slice(0, 8)}…${id.slice(-4)}`; }
@@ -155,7 +154,6 @@ function FormSidebar({ forms, selectedId, onSelect, loading }: {
 // ── Main AdminDashboard ────────────────────────────────────────────
 export function AdminDashboard() {
   const account = useCurrentAccount();
-  const [tab, setTab] = useState<'responses' | 'builder'>('responses');
 
   // Forms list
   const [forms, setForms] = useState<{ suiObjectId: string; configJson: string; formId: string; createdAt: number; title?: string }[]>([]);
@@ -172,9 +170,6 @@ export function AdminDashboard() {
   const [openByIdLoading, setOpenByIdLoading] = useState(false);
   const [openByIdError, setOpenByIdError] = useState('');
 
-  // Builder config
-  const [builderConfig, setBuilderConfig] = useState<FormConfig>(DEFAULT_CONFIG);
-  useEffect(() => { const s = loadAdminConfig(); if (s) setBuilderConfig(s); }, []);
 
   // Load owned forms from Sui
   useEffect(() => {
@@ -209,23 +204,26 @@ export function AdminDashboard() {
           if (data) loaded.push({ ...data, blobId: s.suiObjectId, status: s.status || data.status || 'new' });
         } catch { /* skip unreadable */ }
       }
-      // Fallback: server registry
-      if (loaded.length === 0) {
-        try {
-          const form = forms.find(f => f.suiObjectId === formObjectId);
-          const formCfg = form ? JSON.parse(form.configJson) : null;
-          const blobId = formCfg?.publishedBlobId;
-          if (blobId) {
-            const resp = await fetch(`/api/registry?formBlobId=${blobId}`);
-            if (resp.ok) {
-              const { submissionBlobIds = [] } = await resp.json();
-              for (const bid of submissionBlobIds) {
-                try { const d = await readJsonFromWalrus<Submission>(bid); if (d) loaded.push({ ...d, blobId: bid, status: d.status || 'new' }); } catch { /* skip */ }
-              }
+      // 2. Secondary: query Server Registry for blob IDs
+      try {
+        const form = forms.find(f => f.suiObjectId === formObjectId);
+        const formCfg = form ? JSON.parse(form.configJson) : null;
+        const blobId = formCfg?.publishedBlobId;
+        if (blobId) {
+          const resp = await fetch(`/api/registry?formId=${blobId}`);
+          if (resp.ok) {
+            const { submissionBlobIds = [] } = await resp.json();
+            const existingIds = new Set(loaded.map(s => s.blobId));
+            for (const bid of submissionBlobIds) {
+              if (existingIds.has(bid)) continue;
+              try { 
+                const d = await readJsonFromWalrus<Submission>(bid); 
+                if (d) loaded.push({ ...d, blobId: bid, status: d.status || 'new' }); 
+              } catch { /* skip */ }
             }
           }
-        } catch { /* skip */ }
-      }
+        }
+      } catch { /* skip */ }
       loaded.sort((a, b) => b.timestamp - a.timestamp);
       setSubs(loaded);
     } catch (e) { console.error('[Admin] loadSubs error:', e); }
@@ -253,7 +251,6 @@ export function AdminDashboard() {
       // Add to forms list if not there
       setForms(prev => prev.some(f => f.suiObjectId === id) ? prev : [{ suiObjectId: id, configJson: obj.configJson, formId: obj.formId, createdAt: obj.createdAt, title: form.title }, ...prev]);
       setSelectedFormId(id);
-      setTab('responses');
       if (account) loadSubs(id, account.address);
     } catch (e: any) { setOpenByIdError(e.message || 'Failed to open form.'); }
     setOpenByIdLoading(false);
@@ -292,7 +289,7 @@ export function AdminDashboard() {
         <aside style={{ borderRight: '1px solid var(--border)', padding: '24px 16px', display: 'flex', flexDirection: 'column', gap: 20, overflowY: 'auto', background: 'rgba(5,6,11,0.5)' }}>
           <div>
             <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-3)', marginBottom: 12 }}>MY FORMS</div>
-            <FormSidebar forms={forms} selectedId={selectedFormId} onSelect={id => { setSelectedFormId(id); setTab('responses'); }} loading={formsLoading} />
+            <FormSidebar forms={forms} selectedId={selectedFormId} onSelect={id => setSelectedFormId(id)} loading={formsLoading} />
           </div>
 
           <div style={{ borderTop: '1px solid var(--border)', paddingTop: 16 }}>
@@ -304,11 +301,7 @@ export function AdminDashboard() {
             </button>
           </div>
 
-          <div style={{ borderTop: '1px solid var(--border)', paddingTop: 16 }}>
-            <a href="/builder" className="btn btn-primary btn-sm" style={{ width: '100%', textDecoration: 'none', justifyContent: 'center' }}>
-              + New Form
-            </a>
-          </div>
+
         </aside>
 
         {/* ── Right: Main content ── */}
@@ -317,15 +310,23 @@ export function AdminDashboard() {
           {/* Form header */}
           {selectedForm ? (
             <div style={{ padding: '24px 32px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-                  <a href="/admin" style={{ fontSize: 13, color: 'var(--text-3)', textDecoration: 'none' }}>← Forms</a>
-                  <span style={{ color: 'var(--text-3)' }}>/</span>
-                  <button onClick={() => { navigator.clipboard.writeText(selectedFormId); }} className="mono" style={{ fontSize: 11, padding: '3px 8px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--text-2)', cursor: 'pointer' }}>
-                    {shortId(selectedFormId)} 📋
-                  </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
+                <motion.img 
+                  src="/walform-mascot.png" 
+                  alt="Walform" 
+                  style={{ height: '48px', width: 'auto', filter: 'drop-shadow(0 0 12px rgba(139,92,246,0.3))' }}
+                  whileHover={{ scale: 1.1, rotate: -5 }}
+                />
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                    <a href="/admin" style={{ fontSize: 13, color: 'var(--text-3)', textDecoration: 'none' }}>← Forms</a>
+                    <span style={{ color: 'var(--text-3)' }}>/</span>
+                    <button onClick={() => { navigator.clipboard.writeText(selectedFormId); }} className="mono" style={{ fontSize: 11, padding: '3px 8px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--text-2)', cursor: 'pointer' }}>
+                      {shortId(selectedFormId)} 📋
+                    </button>
+                  </div>
+                  <h1 style={{ fontSize: 28, fontWeight: 900, letterSpacing: '-0.03em' }}>{selectedForm.title || 'Untitled Form'}</h1>
                 </div>
-                <h1 style={{ fontSize: 28, fontWeight: 900, letterSpacing: '-0.03em' }}>{selectedForm.title || 'Untitled Form'}</h1>
               </div>
               <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
                 <button className="btn btn-secondary btn-sm" onClick={() => exportCSV(subs)}>
@@ -345,19 +346,8 @@ export function AdminDashboard() {
             </div>
           )}
 
-          {/* Tabs */}
-          {selectedForm && (
-            <div style={{ padding: '0 32px', borderBottom: '1px solid var(--border)', display: 'flex', gap: 0 }}>
-              {([['responses', 'Responses'], ['builder', 'Builder']] as const).map(([key, label]) => (
-                <button key={key} onClick={() => setTab(key)} style={{ padding: '14px 20px', fontSize: 14, fontWeight: tab === key ? 700 : 500, color: tab === key ? 'var(--accent-2)' : 'var(--text-2)', background: 'none', border: 'none', borderBottom: `2px solid ${tab === key ? 'var(--accent-2)' : 'transparent'}`, cursor: 'pointer', transition: 'all 0.15s' }}>
-                  {label}
-                </button>
-              ))}
-            </div>
-          )}
-
           {/* Content */}
-          {tab === 'responses' && selectedForm && (
+          {selectedForm && (
             <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 380px', overflow: 'hidden' }}>
 
               {/* Submissions list */}
@@ -391,15 +381,15 @@ export function AdminDashboard() {
                 )}
 
                 {subs.map((sub, i) => (
-                  <button key={sub.id} onClick={() => setSelectedSubIdx(i)} style={{ textAlign: 'left', padding: '14px 16px', borderRadius: 'var(--r-lg)', background: selectedSubIdx === i ? 'rgba(139,92,246,0.06)' : 'var(--card)', border: `1px solid ${selectedSubIdx === i ? 'rgba(139,92,246,0.3)' : 'var(--border)'}`, cursor: 'pointer', transition: 'all 0.15s', width: '100%' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-                      <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-1)' }}>
-                        {Object.values(sub.data)[0] ? String(Object.values(sub.data)[0]).slice(0, 40) + '…' : `Response #${i + 1}`}
+                  <button key={sub.id} onClick={() => setSelectedSubIdx(i)} style={{ textAlign: 'left', padding: '10px 14px', borderRadius: 12, background: selectedSubIdx === i ? 'rgba(139,92,246,0.06)' : 'var(--card)', border: `1px solid ${selectedSubIdx === i ? 'rgba(139,92,246,0.3)' : 'var(--border)'}`, cursor: 'pointer', transition: 'all 0.15s', width: '100%' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {Object.values(sub.data)[0] ? String(Object.values(sub.data)[0]).slice(0, 32) + '…' : `Response #${i + 1}`}
                       </span>
                       <StatusBadge status={sub.status} />
                     </div>
-                    <div className="mono" style={{ fontSize: 11, color: 'var(--text-3)' }}>
-                      {sub.blobId ? shortId(sub.blobId) : sub.id.slice(0, 12)}… · {fmtTime(sub.timestamp)}
+                    <div className="mono" style={{ fontSize: 10, color: 'var(--text-3)' }}>
+                      {fmtTime(sub.timestamp)} · {sub.blobId ? shortId(sub.blobId) : sub.id.slice(0, 8)}
                     </div>
                   </button>
                 ))}
@@ -415,14 +405,6 @@ export function AdminDashboard() {
                   </div>
                 )}
               </div>
-            </div>
-          )}
-
-          {/* Builder tab */}
-          {tab === 'builder' && (
-            <div style={{ flex: 1, overflow: 'auto', padding: '32px' }}>
-              <FormBuilderTab config={builderConfig} onChange={c => { setBuilderConfig(c); saveAdminConfig(c); }} ownerAddress={account.address} />
-            </div>
           )}
 
           {/* No form selected */}

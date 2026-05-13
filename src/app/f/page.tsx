@@ -21,21 +21,57 @@ interface FlowState {
 }
 
 // ── Field renderer ───────────────────────────────────────────────
-function FieldInput({ field, value, onChange, onFile, uploading }: {
+function FieldInput({ field, value, onChange, onFile, uploading, allData, onDataChange }: {
   field: SessionField;
   value: string | string[] | boolean;
   onChange: (v: string | string[] | boolean) => void;
   onFile: (f: File | File[]) => Promise<void>;
   uploading: boolean;
+  allData: Record<string, any>;
+  onDataChange: (id: string, v: any) => void;
 }) {
   const base = value as string;
+  const renderAttached = () => {
+    if (!field.attachedCheckbox) return null;
+    const cbId = field.attachedCheckbox.id;
+    const cbVal = !!allData[cbId];
+    return (
+      <div style={{ marginTop: 12 }}>
+        <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontSize: '14px', color: 'var(--text-2)' }}>
+          <input 
+            type="checkbox" 
+            checked={cbVal} 
+            onChange={e => onDataChange(cbId, e.target.checked)} 
+            style={{ width: 16, height: 16, accentColor: 'var(--accent)', cursor: 'pointer' }} 
+          />
+          <span>{field.attachedCheckbox.label}</span>
+        </label>
+      </div>
+    );
+  };
+
   switch (field.type) {
     case 'text': case 'email':
-      return <input type={field.type} className="input" placeholder={field.placeholder} value={base || ''} onChange={e => onChange(e.target.value)} />;
+      return (
+        <div>
+          <input type={field.type} className="input" placeholder={field.placeholder} value={base || ''} onChange={e => onChange(e.target.value)} />
+          {renderAttached()}
+        </div>
+      );
     case 'url':
-      return <input type="url" className="input" placeholder={field.placeholder || 'https://'} value={base || ''} onChange={e => onChange(e.target.value)} />;
+      return (
+        <div>
+          <input type="url" className="input" placeholder={field.placeholder || 'https://'} value={base || ''} onChange={e => onChange(e.target.value)} />
+          {renderAttached()}
+        </div>
+      );
     case 'textarea':
-      return <textarea className="textarea" placeholder={field.placeholder} rows={4} value={base || ''} onChange={e => onChange(e.target.value)} />;
+      return (
+        <div>
+          <textarea className="textarea" placeholder={field.placeholder} rows={4} value={base || ''} onChange={e => onChange(e.target.value)} />
+          {renderAttached()}
+        </div>
+      );
     case 'select':
       return (
         <select className="select" value={base || ''} onChange={e => onChange(e.target.value)} style={{ background: 'var(--card)', color: 'var(--text-1)' }}>
@@ -300,8 +336,10 @@ function FormPageContent() {
       let txDigest = '';
       try {
         const { createSubmissionObject, getSuiClient } = await import('@/lib/walrus-onchain');
-        // Owner harus submitter, bukan admin
-        const txb = await createSubmissionObject(formObjectId, payloadJson, 'new', account.address);
+        const adminAddress = config.publishedBy || config.admins[0];
+        
+        // Owner of the submission must be the admin, so they can see it in their dashboard.
+        const txb = await createSubmissionObject(formObjectId, payloadJson, 'new', adminAddress);
         const { bytes, signature } = await dAppKit.signTransaction({ transaction: txb as any } as any);
         const client = getSuiClient() as any;
         const execResult = await client.executeTransactionBlock({
@@ -363,7 +401,8 @@ function FormPageContent() {
     </div>
   );
 
-  const enabledFields = config.fields.filter(f => f.enabled);
+  const attachedIds = new Set(config.fields.filter(f => f.attachedCheckbox).map(f => f.attachedCheckbox!.id));
+  const enabledFields = config.fields.filter(f => f.enabled && !attachedIds.has(f.id));
   const totalSteps = enabledFields.length;
   const progress = totalSteps > 0 ? ((currentStep) / totalSteps) * 100 : 0;
 
@@ -393,26 +432,8 @@ function FormPageContent() {
       onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && status !== 'submitting') { e.preventDefault(); if (status === 'success') return; if (isLast) handleSubmit(); else goNext(); } }}
       tabIndex={-1}
     >
-      {/* Header with Walform Logo */}
-      <div style={{ position: 'fixed', top: 0, left: 0, right: 0, padding: '24px 32px', display: 'flex', alignItems: 'center', zIndex: 90 }}>
-        <a href="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{
-            width: 28, height: 28, borderRadius: 8, background: 'linear-gradient(135deg, #a855f7 0%, #6366f1 100%)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            boxShadow: '0 0 20px rgba(168,85,247,0.4)', border: '1px solid rgba(255,255,255,0.2)'
-          }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M21 12V7H5a2 2 0 0 1 0-4h14v4" />
-              <path d="M3 5v14a2 2 0 0 0 2 2h16v-5" />
-              <path d="M18 12a2 2 0 0 0 0 4h4v-4Z" />
-            </svg>
-          </div>
-          <span style={{ fontSize: 18, fontWeight: 900, letterSpacing: '-0.04em', color: 'var(--text-1)' }}>Walform</span>
-        </a>
-      </div>
-
       {/* Progress bar */}
-      <div style={{ position: 'fixed', top: 0, left: 0, right: 0, height: 3, zIndex: 100, background: 'rgba(255,255,255,0.06)' }}>
+      <div style={{ position: 'fixed', top: 0, left: 0, right: 0, height: 4, zIndex: 100, background: 'rgba(255,255,255,0.06)' }}>
         <motion.div
           animate={{ width: `${progress}%` }}
           transition={{ ease: 'easeOut', duration: 0.4 }}
@@ -420,18 +441,36 @@ function FormPageContent() {
         />
       </div>
 
-      {/* Header */}
-      <div style={{ padding: '20px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-        <span style={{ fontWeight: 800, fontSize: 15, color: 'var(--text-1)', letterSpacing: '-0.02em' }}>{config.title || 'Form'}</span>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <span style={{ fontSize: 12, color: 'var(--text-3)' }}>{currentStep + 1} / {totalSteps}</span>
-          {!account ? <ConnectButton instance={dAppKit} /> : <span style={{ fontSize: 12, padding: '4px 10px', borderRadius: 999, background: 'rgba(139,92,246,0.12)', border: '1px solid rgba(139,92,246,0.25)', color: 'var(--accent-2)', fontFamily: 'var(--mono)' }}>{account.address.slice(0,6)}…{account.address.slice(-4)}</span>}
+      {/* Unified Professional Header */}
+      <div style={{ position: 'fixed', top: 0, left: 0, right: 0, padding: '16px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.08)', background: 'rgba(9,9,11,0.85)', backdropFilter: 'blur(16px)', zIndex: 90 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 24, minWidth: 0 }}>
+          {/* Logo */}
+          <a href="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
+            <motion.img 
+              src="/walform-mascot.png" 
+              alt="Walform" 
+              style={{ height: '32px', width: 'auto', filter: 'drop-shadow(0 0 12px rgba(139,92,246,0.4))' }}
+              whileHover={{ scale: 1.1, rotate: -5 }}
+            />
+            <span style={{ fontSize: 20, fontWeight: 900, letterSpacing: '-0.04em', color: '#fff' }}>Walform</span>
+          </a>
+
+          <div style={{ width: 1, height: 24, background: 'rgba(255,255,255,0.1)', flexShrink: 0 }} />
+          
+          <span style={{ fontWeight: 600, fontSize: 16, color: 'var(--text-2)', letterSpacing: '-0.01em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {config.title || 'Form'}
+          </span>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-3)', background: 'rgba(255,255,255,0.05)', padding: '6px 12px', borderRadius: 999 }}>{currentStep + 1} of {totalSteps}</span>
+          {!account ? <ConnectButton instance={dAppKit} /> : <span style={{ fontSize: 13, padding: '6px 12px', borderRadius: 999, background: 'rgba(139,92,246,0.12)', border: '1px solid rgba(139,92,246,0.25)', color: 'var(--accent-2)', fontFamily: 'var(--mono)', fontWeight: 600 }}>{account.address.slice(0,6)}…{account.address.slice(-4)}</span>}
         </div>
       </div>
 
-      {/* Content */}
-      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px 24px' }}>
-        <div style={{ width: '100%', maxWidth: 640 }}>
+      {/* Content wrapper with top padding to account for fixed header */}
+      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '120px 24px 60px' }}>
+        <div style={{ width: '100%', maxWidth: 720 }}>
 
           {status === 'success' ? (
             <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20 }}>
@@ -462,6 +501,8 @@ function FormPageContent() {
                     onChange={v => { setData(d => ({ ...d, [field.id]: v })); setErrors(e => { const n = {...e}; delete n[field.id]; return n; }); }}
                     onFile={files => handleFile(field.id, files)}
                     uploading={!!fileUploading[field.id]}
+                    allData={data}
+                    onDataChange={(id, v) => { setData(d => ({ ...d, [id]: v })); setErrors(e => { const n = {...e}; delete n[id]; return n; }); }}
                   />
                 </div>
                 {errors[field.id] && <p style={{ fontSize: 13, color: 'var(--error)', marginBottom: 16 }}>{errors[field.id]}</p>}
