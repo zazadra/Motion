@@ -232,6 +232,8 @@ export function AdminDashboard() {
   const [selectedSubIdx, setSelectedSubIdx] = useState(0);
 
   const [openByIdError, setOpenByIdError] = useState('');
+  const [openByIdInput, setOpenByIdInput] = useState('');
+  const [openByIdLoading, setOpenByIdLoading] = useState(false);
   
   // E2E Encryption state
   const [decryptionSig, setDecryptionSig] = useState<string | null>(null);
