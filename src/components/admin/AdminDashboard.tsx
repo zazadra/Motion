@@ -165,9 +165,9 @@ function SubmissionDetail({ sub, idx, onStatusChange, decryptionSig, onUnlock }:
                     Array.isArray(val) ? val.join(', ') : s || '—'
                   )}
                 </div>
-              </div>
-            );
-          })}
+              );
+            })
+          )}
         </div>
       </div>
 
