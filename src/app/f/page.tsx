@@ -313,8 +313,9 @@ function FormPageContent() {
         try {
           const { encryptData } = await import('@/lib/seal');
           // Key is derived deterministically from adminAddress + formId
-          // Only the admin wallet owner knows their address, so only they can decrypt
-          const encKey = `walform:${account.address}:${formObjectId}`;
+          // The admin wallet owner will derive the exact same key to decrypt
+          const adminAddress = config.publishedBy || config.admins[0];
+          const encKey = `walform:${adminAddress}:${formObjectId}`;
           const encryptedPayload = await encryptData(JSON.stringify(data), encKey);
           finalData = { __encrypted: encryptedPayload } as any;
         } catch (err) {
@@ -350,19 +351,14 @@ function FormPageContent() {
       // Step 2: Sui submit_response tx
       let txDigest = '';
       try {
-        const { createSubmissionObject, getSuiClient } = await import('@/lib/walrus-onchain');
+        const { createSubmissionObject } = await import('@/lib/walrus-onchain');
         const adminAddress = config.publishedBy || config.admins[0];
         
-        // Owner of the submission must be the admin, so they can see it in their dashboard.
+        // The owner is adminAddress so they can see it in their dashboard
         const txb = await createSubmissionObject(formObjectId, payloadJson, 'new', adminAddress);
-        const { bytes, signature } = await dAppKit.signTransaction({ transaction: txb as any } as any);
-        const client = getSuiClient() as any;
-        const execResult = await client.executeTransactionBlock({
-          transactionBlock: bytes,
-          signature,
-          options: { showEffects: true },
-          requestType: 'WaitForLocalExecution',
-        });
+        
+        // Execute using the current wallet signer
+        const execResult = await signer.signAndExecute(txb);
         txDigest = execResult?.digest ?? '';
       } catch (txErr) {
         console.error('[Sui] submit_response tx failed:', txErr);
@@ -417,7 +413,7 @@ function FormPageContent() {
   );
 
   const attachedIds = new Set(config.fields.filter(f => f.attachedCheckbox).map(f => f.attachedCheckbox!.id));
-  const enabledFields = config.fields.filter(f => f.enabled && !attachedIds.has(f.id));
+  const enabledFields = config.fields.filter(f => f.enabled && f.id !== 'newsletter' && !attachedIds.has(f.id));
   const totalSteps = enabledFields.length;
   const progress = totalSteps > 0 ? ((currentStep) / totalSteps) * 100 : 0;
 
@@ -519,6 +515,26 @@ function FormPageContent() {
                     allData={data}
                     onDataChange={(id, v) => { setData(d => ({ ...d, [id]: v })); setErrors(e => { const n = {...e}; delete n[id]; return n; }); }}
                   />
+                  
+                  {field.id === 'leader_email' && (() => {
+                    const newsletterField = config.fields.find(f => f.id === 'newsletter' && f.enabled);
+                    if (newsletterField) {
+                      return (
+                        <div style={{ marginTop: '24px', paddingTop: '24px', borderTop: '1px solid var(--border)' }}>
+                          <FieldInput 
+                            field={newsletterField} 
+                            value={data[newsletterField.id] ?? false} 
+                            onChange={v => setData(d => ({ ...d, [newsletterField.id]: v }))} 
+                            onFile={async () => {}} 
+                            uploading={false}
+                            allData={data}
+                            onDataChange={(id, v) => setData(d => ({ ...d, [id]: v }))}
+                          />
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
                 </div>
                 {errors[field.id] && <p style={{ fontSize: 13, color: 'var(--error)', marginBottom: 16 }}>{errors[field.id]}</p>}
                 {errMsg && <div className="alert-error" style={{ marginBottom: 16 }}>{errMsg}</div>}
