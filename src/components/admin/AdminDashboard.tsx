@@ -171,7 +171,7 @@ function SubmissionDetail({ sub, idx, onStatusChange, decryptionSig, onUnlock }:
                 }
                 
                 if (isBlob) {
-                  const blobId = s.slice(0, 43);
+                  const blobId = s;
                   return (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                       <a href={`https://aggregator.walrus-mainnet.walrus.space/v1/blobs/${blobId}`} target="_blank" rel="noreferrer" style={{ color: '#8b5cf6', textDecoration: 'underline', wordBreak: 'break-all', fontSize: 12 }}>{s}</a>
@@ -399,7 +399,7 @@ export function AdminDashboard() {
   }
 
   return (
-    <div className="mobile-min-h-screen mobile-h-auto" style={{ height: 'calc(100dvh - 56px)', backgroundColor: 'var(--bg)', display: 'flex', flexDirection: 'column' }}>
+    <div className="mobile-min-h-screen mobile-h-auto" style={{ height: 'calc(100dvh - 56px)', backgroundColor: 'var(--bg)', display: 'flex', flexDirection: 'column', overflow: 'auto' }}>
       {/* ── Page layout: left sidebar + main content ── */}
       <div className="mobile-grid-stack mobile-overflow-visible" style={{ display: 'grid', gridTemplateColumns: '260px 1fr', flex: 1, minHeight: 0 }}>
 
@@ -469,7 +469,7 @@ export function AdminDashboard() {
 
           {/* Content */}
           {selectedForm && (
-            <div className="mobile-grid-stack mobile-overflow-visible" style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 380px', overflow: 'hidden' }}>
+            <div className="mobile-grid-stack mobile-overflow-visible" style={{ flex: 1, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 380px', minHeight: 0 }}>
 
               {/* Submissions list */}
               <div className="mobile-overflow-visible" style={{ borderRight: '1px solid var(--border)', overflow: 'auto', padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -520,7 +520,7 @@ export function AdminDashboard() {
               </div>
 
               {/* Detail panel */}
-              <div className="mobile-overflow-visible" style={{ overflow: 'auto', padding: '24px' }}>
+              <div className="mobile-overflow-visible mobile-h-auto" style={{ overflow: 'auto', padding: '24px' }}>
                 {selectedSub ? (
                   <SubmissionDetail 
                     sub={selectedSub} 

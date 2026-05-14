@@ -10,6 +10,7 @@
 import type { WalrusUploadResponse } from '@/types/walform';
 import { SuiJsonRpcClient } from '@mysten/sui/jsonRpc';
 import { WalrusClient } from '@mysten/walrus';
+import { WALRUS_PROVIDERS } from './walrus-providers';
 
 export const NETWORK = 'mainnet' as const;
 
@@ -144,12 +145,39 @@ export async function uploadBytesToWalrus(
       }
     }
     const txt = await res.text();
-    console.warn('[Walrus] Relay failed, trying Native SDK...', res.status, txt);
+    console.warn('[Walrus] Relay failed:', res.status, txt);
   } catch (err) {
-    console.warn('[Walrus] Relay exception, trying Native SDK...', err);
+    console.warn('[Walrus] Relay exception:', err);
   }
 
-  // 2. Fallback to Native SDK (Requires wallet approval)
+  // 2. Try Direct Client-side PUT to publishers (No wallet approval required for some)
+  for (const provider of WALRUS_PROVIDERS) {
+    try {
+      onProgress?.({ status: 'uploading', message: `Trying direct upload to ${provider.name}...` });
+      const res = await fetch(provider.uploadUrl, {
+        method: provider.method,
+        headers: { 'Content-Type': 'application/octet-stream' },
+        body: bytes as any,
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const info = data.newlyCreated?.blobObject || data.alreadyCertified || data;
+        if (info.blobId) {
+          const cleanId = info.blobId.slice(0, 43);
+          onProgress?.({ status: 'success', message: `Stored via ${provider.name} ✓` });
+          return {
+            blobId: cleanId,
+            objectId: info.id || info.objectId || '',
+            endEpoch: info.storage?.endEpoch || 0,
+          };
+        }
+      }
+    } catch (err) {
+      console.warn(`[Walrus] Direct upload to ${provider.name} failed:`, err);
+    }
+  }
+
+  // 3. Fallback to Native SDK (Requires wallet approval & SUI payment)
   try {
     const walrusClient = getWalrusClient();
     const flow = walrusClient.writeBlobFlow({ blob: bytes });
@@ -170,12 +198,19 @@ export async function uploadBytesToWalrus(
     onProgress?.({ status: 'registering', message: 'Waiting for wallet approval (register)...' });
     const registerTx = flow.register({ owner: signer.address, deletable: false, epochs });
 
+    let blobObjectId = '';
     if (registerTx && registerTx.getData().commands.length > 0) {
-      await signer.signAndExecute(registerTx);
+      const txRes = await signer.signAndExecute(registerTx);
+      // Try to extract object ID if we can (simplified)
+      console.log('[Walrus] Registered:', txRes.digest);
     }
 
     // Upload via SDK (direct to nodes)
     onProgress?.({ status: 'uploading', message: 'Uploading to Walrus network...' });
+    
+    // IMPORTANT FIX: For native SDK, if relay is configured, it handles registration/upload coordination.
+    // If we get "resume.blobObjectId" error, it means the flow object is confused.
+    // We try a fresh upload via the configured relay in the client.
     const uploaded = await flow.upload();
 
     // Certify (wallet popup #2)

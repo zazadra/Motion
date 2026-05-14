@@ -11,6 +11,29 @@ import { useSearchParams } from 'next/navigation';
 
 function uid() { return Math.random().toString(36).slice(2, 10); }
 function shorten(a: string) { return `${a.slice(0, 6)}…${a.slice(-4)}`; }
+function compressImage(file: File, maxW = 1200, maxH = 1200, quality = 0.8): Promise<Blob | null> {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (e) => {
+      const img = new Image();
+      img.src = e.target?.result as string;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let { width, height } = img;
+        if (width > maxW || height > maxH) {
+          if (width > height) { height *= maxW / width; width = maxW; }
+          else { width *= maxH / height; height = maxH; }
+        }
+        canvas.width = width; canvas.height = height;
+        canvas.getContext('2d')?.drawImage(img, 0, 0, width, height);
+        canvas.toBlob((blob) => resolve(blob), 'image/jpeg', quality);
+      };
+      img.onerror = () => resolve(null);
+    };
+    reader.onerror = () => resolve(null);
+  });
+}
 
 // ── Flow step state ──────────────────────────────────────────────
 type FlowStep = 'idle' | 'uploading' | 'done' | 'error';
@@ -119,34 +142,23 @@ function FieldInput({ field, value, onChange, onFile, uploading, allData, onData
           <button type="button" onClick={triggerInput} className="btn btn-secondary btn-sm" disabled={uploading} style={{ width: 'fit-content' }}>
             {uploading ? <><span className="spinner" />Uploading…</> : 'Choose File'}
           </button>
-          {Array.isArray(value) && (value as string[]).map((blobId, i) => (
-            <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '12px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)', borderRadius: 12 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: 'var(--text-2)', fontFamily: 'var(--mono)' }}>
-                <span>📎</span>
-                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>blob-{blobId.slice(0, 24)}…</span>
+          {(() => {
+            const blobs = Array.isArray(value) ? value : (value ? [value as string] : []);
+            return blobs.map((blobId, i) => (
+              <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '12px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)', borderRadius: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: 'var(--text-2)', fontFamily: 'var(--mono)' }}>
+                  <span>📎</span>
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>blob-{blobId.slice(0, 24)}…</span>
+                </div>
+                <img 
+                  src={`https://aggregator.walrus-mainnet.walrus.space/v1/blobs/${blobId}`} 
+                  alt="" 
+                  style={{ width: '100%', maxHeight: 240, objectFit: 'cover', borderRadius: 8, border: '1px solid rgba(255,255,255,0.05)' }} 
+                  onError={(e) => (e.currentTarget.style.display = 'none')}
+                />
               </div>
-              <img 
-                src={`https://aggregator.walrus-mainnet.walrus.space/v1/blobs/${blobId}`} 
-                alt="" 
-                style={{ width: '100%', maxHeight: 240, objectFit: 'cover', borderRadius: 8, border: '1px solid rgba(255,255,255,0.05)' }} 
-                onError={(e) => (e.currentTarget.style.display = 'none')}
-              />
-            </div>
-          ))}
-          {value && typeof value === 'string' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '12px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)', borderRadius: 12 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: 'var(--text-2)', fontFamily: 'var(--mono)' }}>
-                <span>📎</span>
-                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>blob-{(value as string).slice(0, 24)}…</span>
-              </div>
-              <img 
-                src={`https://aggregator.walrus-mainnet.walrus.space/v1/blobs/${value}`} 
-                alt="" 
-                style={{ width: '100%', maxHeight: 240, objectFit: 'cover', borderRadius: 8, border: '1px solid rgba(255,255,255,0.05)' }} 
-                onError={(e) => (e.currentTarget.style.display = 'none')}
-              />
-            </div>
-          )}
+            ));
+          })()}
         </div>
       );
     }
@@ -286,15 +298,40 @@ function FormPageContent() {
     })();
   }, [formObjectId]);
 
-  // ── File upload ──
+  // ── File upload with compression ──
   async function handleFile(fieldId: string, files: File | File[]) {
     if (!account) { setErrors(e => ({ ...e, [fieldId]: 'Connect your wallet to upload files.' })); return; }
     setFileUploading(u => ({ ...u, [fieldId]: true }));
     try {
-      const signer = { address: account.address, signAndExecute: async (tx: unknown) => { const r = await dAppKit.signAndExecuteTransaction({ transaction: tx as any }); const digest = (r as any)?.Transaction?.digest ?? (r as any)?.digest; if (!digest) throw new Error('Wallet signing failed'); return { digest }; } };
+      const signer = { 
+        address: account.address, 
+        signAndExecute: async (tx: unknown) => { 
+          const r = await dAppKit.signAndExecuteTransaction({ transaction: tx as any }); 
+          const digest = (r as any)?.Transaction?.digest ?? (r as any)?.digest; 
+          if (!digest) throw new Error('Wallet signing failed'); 
+          return { digest }; 
+        } 
+      };
+      
       const fileArray = Array.isArray(files) ? files : [files];
       const ids: string[] = [];
-      for (const f of fileArray) { const res = await uploadBytesToWalrus(f, signer, 3); ids.push(res.blobId); }
+      
+      for (const f of fileArray) {
+        let uploadTarget: File | Blob = f;
+        
+        // Compress images to ensure they pass through the relay
+        if (f.type.startsWith('image/')) {
+          try {
+            const compressed = await compressImage(f);
+            if (compressed) uploadTarget = compressed;
+          } catch (e) {
+            console.warn('[Compression] Failed, using original file:', e);
+          }
+        }
+        
+        const res = await uploadBytesToWalrus(uploadTarget, signer, 3);
+        ids.push(res.blobId);
+      }
       setData(d => { const ex = d[fieldId]; const arr = Array.isArray(ex) ? ex : (ex && typeof ex === 'string' ? [ex] : []); const combined = [...(arr as string[]), ...ids]; return { ...d, [fieldId]: combined.length === 1 ? combined[0] : combined }; });
       setErrors(e => { const n = { ...e }; delete n[fieldId]; return n; });
     } catch (err: any) { setErrors(e => ({ ...e, [fieldId]: err.message || 'File upload failed.' })); }

@@ -59,7 +59,7 @@ function FieldEditor({ field, onChange, onRemove, sessionCount, onSessionCountCh
     }}>
       {/* Row header */}
       <div 
-        className="mobile-stack mobile-gap-4"
+        className="mobile-stack mobile-gap-4 mobile-items-start"
         style={{ display:'flex', alignItems:'center', gap:'16px', padding:'16px 20px', position: 'relative' }}
       >
         <div style={{ 
@@ -88,7 +88,7 @@ function FieldEditor({ field, onChange, onRemove, sessionCount, onSessionCountCh
         </div>
 
         {/* Action Group */}
-        <div style={{ display:'flex', alignItems:'center', gap:'12px' }}>
+        <div className="mobile-w-full" style={{ display:'flex', alignItems:'center', gap:'12px', flexWrap: 'wrap' }}>
           {/* Required toggle */}
           {field.enabled && (
             <button 
