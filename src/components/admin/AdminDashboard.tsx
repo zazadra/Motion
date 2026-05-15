@@ -50,7 +50,7 @@ function StatusBadge({ status, onClick }: { status: string; onClick?: () => void
 }
 
 // ── Submission detail panel ───────────────────────────────────────
-function SubmissionDetail({ sub, idx, onStatusChange, decryptionSig, onUnlock, unlocking, config }: { 
+function SubmissionDetail({ sub, idx, onStatusChange, decryptionSig, onUnlock, unlocking, config, formId }: { 
   sub: Submission; 
   idx: number; 
   onStatusChange: (id: string, status: string) => void;
@@ -58,25 +58,33 @@ function SubmissionDetail({ sub, idx, onStatusChange, decryptionSig, onUnlock, u
   onUnlock: () => void;
   unlocking: boolean;
   config: FormConfig | null;
+  formId: string;
 }) {
   const [activeTab, setActiveTab] = useState<'content' | 'meta'>('content');
   const [decryptedData, setDecryptedData] = useState<Record<string, any> | null>(null);
   const [decryptErr, setDecryptErr] = useState(false);
 
   useEffect(() => {
-    if (sub.data?.__encrypted && decryptionSig) {
+    if (sub.data?.__encrypted && decryptionSig && config) {
       import('@/lib/seal').then(({ decryptData }) => {
-        decryptData(sub.data.__encrypted as string, decryptionSig)
+        // Derive the exact same key string as in f/page.tsx
+        const adminAddress = config.publishedBy || (config.admins && config.admins[0]) || '';
+        const encKey = `walform:${adminAddress}:${formId}`;
+        
+        decryptData(sub.data.__encrypted as string, encKey)
           .then((dec: string) => {
             setDecryptedData(JSON.parse(dec));
             setDecryptErr(false);
           })
-          .catch(() => setDecryptErr(true));
+          .catch((err) => {
+            console.error("[Decrypt] Error:", err);
+            setDecryptErr(true);
+          });
       });
     } else {
       setDecryptedData(null);
     }
-  }, [sub.data, decryptionSig]);
+  }, [sub.data, decryptionSig, config, formId]);
 
   const displayData = sub.data?.__encrypted ? (decryptedData || {}) : sub.data;
   
@@ -495,6 +503,7 @@ export function AdminDashboard() {
                     onUnlock={handleUnlock}
                     unlocking={unlocking}
                     config={parsedFormConfig}
+                    formId={selectedFormId}
                   />
                 ) : (
                   <div className="empty-state">
