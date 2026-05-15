@@ -410,14 +410,19 @@ export async function extendWalrusBlob(
  * Returns null if the blob is not found in the wallet.
  */
 export async function findWalrusBlobObjectId(
-  blobId: string,
+  blobHash: string,
   ownerAddress: string,
 ): Promise<string | null> {
   try {
     const client = getWalrusClient();
     const blobType = await client.getBlobType();
     const { getSuiClient } = await import('@/lib/walrus-onchain');
+    const { bcs } = await import('@mysten/sui/bcs');
     const suiClient = getSuiClient() as any;
+
+    // The blobHash is base64url. The Sui RPC returns `blob_id` as a u256 decimal string.
+    const b64 = blobHash.replace(/-/g, '+').replace(/_/g, '/');
+    const targetDecimalId = BigInt(bcs.u256().fromBase64(b64)).toString();
 
     let cursor: string | null = null;
     do {
@@ -431,7 +436,7 @@ export async function findWalrusBlobObjectId(
       for (const item of resp.data ?? []) {
         if (item.data?.content?.dataType !== 'moveObject') continue;
         const fields = (item.data.content as any).fields as Record<string, any>;
-        if (fields.blob_id === blobId) return item.data.objectId;
+        if (fields.blob_id === targetDecimalId) return item.data.objectId;
       }
       cursor = resp.nextCursor ?? null;
     } while (cursor);
