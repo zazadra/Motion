@@ -155,34 +155,42 @@ function FieldInput({ field, value, onChange, onFile, uploading, uploadStep, wal
               <span>Connect your wallet to upload files to Walrus.</span>
             </div>
           ) : (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
-              <button
-                type="button"
-                onClick={triggerInput}
-                className="btn btn-secondary btn-sm"
-                disabled={uploading}
-                style={{ width: 'fit-content', minWidth: 140 }}
-              >
-                {uploading
-                  ? <><span className="spinner" />{uploadStep?.message || 'Uploading…'}</>
-                  : '📎 Choose File'}
-              </button>
-              
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               {!uploading && onEpochsChange && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text-3)' }}>
-                  <span style={{ fontWeight: 600 }}>Duration:</span>
-                  <select 
-                    value={mediaEpochs || 1} 
-                    onChange={e => onEpochsChange(Number(e.target.value))}
-                    style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--text-1)', padding: '4px 8px', fontSize: 13, outline: 'none', cursor: 'pointer' }}
-                  >
-                    <option value={1} style={{ background: 'var(--bg)' }}>1 Epoch (~1 Week)</option>
-                    <option value={5} style={{ background: 'var(--bg)' }}>5 Epochs (~1 Month)</option>
-                    <option value={26} style={{ background: 'var(--bg)' }}>26 Epochs (~6 Months)</option>
-                    <option value={52} style={{ background: 'var(--bg)' }}>52 Epochs (~1 Year)</option>
-                  </select>
+                <div style={{ padding: '10px 14px', background: 'rgba(56,189,248,0.08)', border: '1px solid rgba(56,189,248,0.2)', borderRadius: 8, fontSize: 12, color: 'var(--text-2)', lineHeight: 1.5 }}>
+                  <span style={{ color: '#38bdf8', fontWeight: 700, marginRight: 6 }}>ℹ️ Note:</span>
+                  Tentukan durasi penyimpanan (epoch) <strong>sebelum</strong> mengunggah file.
                 </div>
               )}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  onClick={triggerInput}
+                  className="btn btn-secondary btn-sm"
+                  disabled={uploading}
+                  style={{ width: 'fit-content', minWidth: 140 }}
+                >
+                  {uploading
+                    ? <><span className="spinner" />{uploadStep?.message || 'Uploading…'}</>
+                    : '📎 Choose File'}
+                </button>
+                
+                {!uploading && onEpochsChange && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text-3)' }}>
+                    <span style={{ fontWeight: 600 }}>Duration:</span>
+                    <select 
+                      value={mediaEpochs || 1} 
+                      onChange={e => onEpochsChange(Number(e.target.value))}
+                      style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--text-1)', padding: '4px 8px', fontSize: 13, outline: 'none', cursor: 'pointer' }}
+                    >
+                      <option value={1} style={{ background: 'var(--bg)' }}>1 Epoch (~1 Week)</option>
+                      <option value={5} style={{ background: 'var(--bg)' }}>5 Epochs (~1 Month)</option>
+                      <option value={26} style={{ background: 'var(--bg)' }}>26 Epochs (~6 Months)</option>
+                      <option value={52} style={{ background: 'var(--bg)' }}>52 Epochs (~1 Year)</option>
+                    </select>
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
