@@ -226,11 +226,6 @@ function SubmissionDetail({ sub, idx, onStatusChange, decryptionSig, onUnlock, u
                            ))}
                         </div>
                       ) : Array.isArray(val) ? (
-                              📥 Download
-                            </a>
-                          </div>
-                        </div>
-                      ) : Array.isArray(val) ? (
                         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                           {val.map((v: any) => <span key={v} className="badge-premium" style={{ fontSize: 11 }}>{v}</span>)}
                         </div>
