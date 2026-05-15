@@ -50,12 +50,13 @@ function StatusBadge({ status, onClick }: { status: string; onClick?: () => void
 }
 
 // ── Submission detail panel ───────────────────────────────────────
-function SubmissionDetail({ sub, idx, onStatusChange, decryptionSig, onUnlock, config }: { 
+function SubmissionDetail({ sub, idx, onStatusChange, decryptionSig, onUnlock, unlocking, config }: { 
   sub: Submission; 
   idx: number; 
   onStatusChange: (id: string, status: string) => void;
   decryptionSig: string | null;
   onUnlock: () => void;
+  unlocking: boolean;
   config: FormConfig | null;
 }) {
   const [activeTab, setActiveTab] = useState<'content' | 'meta'>('content');
@@ -129,7 +130,13 @@ function SubmissionDetail({ sub, idx, onStatusChange, decryptionSig, onUnlock, c
                 <div style={{ fontSize: 32, marginBottom: 16 }}>🔒</div>
                 <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 8 }}>Encrypted Content</h3>
                 <p style={{ fontSize: 13, color: 'var(--text-2)', marginBottom: 20 }}>This submission is encrypted. You need to unlock it with your wallet.</p>
-                <button className="btn btn-primary" onClick={onUnlock}>Unlock Submission</button>
+                <button 
+                  className="btn btn-primary" 
+                  onClick={onUnlock}
+                  disabled={unlocking}
+                >
+                  {unlocking ? <><span className="spinner" style={{ width: 14, height: 14, marginRight: 8 }} /> Unlocking...</> : 'Unlock Submission'}
+                </button>
                 {decryptErr && <p style={{ color: 'var(--error)', fontSize: 12, marginTop: 12 }}>Failed to decrypt. Make sure you are the form owner.</p>}
               </div>
             )}
@@ -287,21 +294,37 @@ export function AdminDashboard() {
   const [unlocking, setUnlocking] = useState(false);
 
   async function handleUnlock() {
-    if (!account || !wallet) return;
+    console.log("[Admin] handleUnlock triggered", { account, wallet });
+    if (!account || !wallet) {
+      console.warn("[Admin] handleUnlock failed: account or wallet missing");
+      return;
+    }
     setUnlocking(true);
     try {
       const message = new TextEncoder().encode('Unlock Walform Submissions');
-      const signFeature = (wallet as any)?.features?.['sui:signPersonalMessage'];
-      if (!signFeature) throw new Error("Wallet signing not supported by this wallet.");
-      const signResult = await signFeature.signPersonalMessage({ message });
+      const features = (wallet as any)?.features;
+      const signFeature = features?.['sui:signPersonalMessage'] || features?.['sui:signMessage'];
+      
+      if (!signFeature) throw new Error("Wallet does not support signing. Use Sui Wallet or OKX.");
+      
+      let signResult;
+      if (features?.['sui:signPersonalMessage']) {
+        console.log("[Admin] Using signPersonalMessage");
+        signResult = await features['sui:signPersonalMessage'].signPersonalMessage({ message });
+      } else {
+        console.log("[Admin] Using signMessage");
+        signResult = await features['sui:signMessage'].signMessage({ message });
+      }
       const sig = typeof signResult === 'object' && signResult !== null
         ? (signResult as any).signature ?? ''
         : '';
       
       if (!sig) throw new Error('Failed to get signature');
+      console.log("[Admin] Signature received:", sig);
       setDecryptionSig(sig);
     } catch (e) {
       console.error('[Admin] Unlock error:', e);
+      alert('Unlock failed: ' + (e instanceof Error ? e.message : 'Unknown error'));
     }
     setUnlocking(false);
   }
@@ -480,6 +503,7 @@ export function AdminDashboard() {
                     onStatusChange={handleStatusChange} 
                     decryptionSig={decryptionSig}
                     onUnlock={handleUnlock}
+                    unlocking={unlocking}
                     config={parsedFormConfig}
                   />
                 ) : (
