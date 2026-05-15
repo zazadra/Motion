@@ -587,19 +587,28 @@ function FormPageContent() {
         </div>
       </div>
 
-      {/* Content wrapper with top padding to account for fixed header */}
+      {/* Content wrapper — top padding clears the fixed header on all screen sizes */}
       <div 
-        className="mobile-p-4"
-        style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '100px 24px 40px' }}
+        className="form-content-wrapper"
+        style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '100px 40px 60px', position: 'relative' }}
       >
-        <div style={{ width: '100%', maxWidth: 720 }}>
+        {/* Floating mascot — desktop decoration only */}
+        <div className="form-mascot-deco" aria-hidden>
+          <img src="/walform-mascot.png" alt="" style={{ width: 180, opacity: 0.12, filter: 'drop-shadow(0 0 40px rgba(139,92,246,0.5)) blur(1px)', pointerEvents: 'none', userSelect: 'none' }} />
+        </div>
+        <div style={{ width: '100%', maxWidth: 680 }}>
 
           {status === 'success' ? (
-            <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20 }}>
-              <div style={{ width: 72, height: 72, borderRadius: '50%', background: 'rgba(16,185,129,0.12)', border: '2px solid var(--success)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32 }}>✓</div>
-              <h2 style={{ fontSize: 28, fontWeight: 900, color: 'var(--text-1)', letterSpacing: '-0.03em' }}>All done!</h2>
-              <p style={{ fontSize: 16, color: 'var(--text-2)', lineHeight: 1.6 }}>Your response has been anchored on Sui.</p>
-              {receipt?.txDigest && <div className="mono" style={{ fontSize: 11, color: 'var(--text-3)', padding: '8px 14px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)', borderRadius: 8, wordBreak: 'break-all' }}>Tx: {receipt.txDigest}</div>}
+            <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20, width: '100%' }}>
+              <motion.div
+                initial={{ scale: 0.5, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ type: 'spring', stiffness: 300, damping: 20, delay: 0.1 }}
+                style={{ width: 80, height: 80, borderRadius: '50%', background: 'rgba(16,185,129,0.12)', border: '2px solid var(--success)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 36, boxShadow: '0 0 32px rgba(16,185,129,0.25)' }}
+              >✓</motion.div>
+              <h2 style={{ fontSize: 32, fontWeight: 900, color: 'var(--text-1)', letterSpacing: '-0.03em' }}>All done!</h2>
+              <p style={{ fontSize: 16, color: 'var(--text-2)', lineHeight: 1.6, maxWidth: 320, wordBreak: 'break-word', overflowWrap: 'anywhere' }}>Your response has been anchored on Sui. 🎉</p>
+              {receipt?.txDigest && <div className="mono" style={{ fontSize: 11, color: 'var(--text-3)', padding: '10px 14px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)', borderRadius: 8, wordBreak: 'break-all', overflowWrap: 'anywhere', maxWidth: '100%', textAlign: 'left' }}>Tx: {receipt.txDigest}</div>}
             </motion.div>
           ) : field ? (
             <AnimatePresence mode="wait" custom={direction}>
@@ -611,8 +620,8 @@ function FormPageContent() {
                 exit={{ opacity: 0, y: direction * -40 }}
                 transition={{ duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
               >
-                <div style={{ marginBottom: 8, fontSize: 12, fontWeight: 700, color: 'var(--accent-2)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>{currentStep + 1} →</div>
-                <h2 style={{ fontSize: 26, fontWeight: 800, color: 'var(--text-1)', marginBottom: 8, lineHeight: 1.3, letterSpacing: '-0.02em' }}>
+                <div style={{ marginBottom: 8, fontSize: 13, fontWeight: 700, color: 'var(--accent-2)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>{currentStep + 1} →</div>
+                <h2 className="form-question-title" style={{ fontWeight: 800, color: 'var(--text-1)', marginBottom: 8, lineHeight: 1.2, letterSpacing: '-0.02em' }}>
                   {field.label}{field.required && <span style={{ color: 'var(--accent-2)', marginLeft: 4 }}>*</span>}
                 </h2>
                 {field.description && <p style={{ fontSize: 14, color: 'var(--text-3)', marginBottom: 20, lineHeight: 1.6 }}>{field.description}</p>}
@@ -668,7 +677,7 @@ function FormPageContent() {
                     <button className="btn btn-primary" onClick={goNext} style={{ padding: '13px 28px', fontSize: 15 }}>OK →</button>
                   )}
                   {currentStep > 0 && <button className="btn btn-secondary btn-sm" onClick={goBack} style={{ opacity: 0.6 }}>↑ Back</button>}
-                  <span style={{ fontSize: 12, color: 'var(--text-3)', marginLeft: 4 }}>press <kbd style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, padding: '1px 5px', fontFamily: 'inherit' }}>Enter</kbd></span>
+                  <span className="hide-mobile" style={{ fontSize: 12, color: 'var(--text-3)', marginLeft: 4 }}>press <kbd style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, padding: '1px 5px', fontFamily: 'inherit' }}>Enter</kbd></span>
                 </div>
               </motion.div>
             </AnimatePresence>
