@@ -1,15 +1,18 @@
 /**
- * Walrus Upload – Official SDK (writeBlobFlow + Upload Relay)
+ * Walrus Upload — Official SDK (writeBlobFlow + Upload Relay)
  *
- * Key fixes vs previous version:
- *  - Added uploadRelay config → routes through relay instead of 2200+ direct storage node requests
- *  - Switched writeFilesFlow → writeBlobFlow (simpler, same result for raw bytes)
- *  - Removed incorrect `digest: blobId` arg from flow.upload() — digest is for resume only
+ * Architecture:
+ *  - ALL uploads are wallet-signed by the user in the browser.
+ *  - The upload relay (upload-relay.mainnet.walrus.space) distributes blob
+ *    shards to storage nodes — this is correct and stays.
+ *  - There is NO server-side fallback. The server cannot sign Sui transactions.
+ *  - On failure, structured errors guide the user to the right recovery action.
  */
 
 import type { WalrusUploadResponse } from '@/types/walform';
 import { SuiJsonRpcClient } from '@mysten/sui/jsonRpc';
 import { WalrusClient } from '@mysten/walrus';
+import { WALRUS_AGGREGATORS, PRIMARY_AGGREGATOR } from './walrus-providers';
 
 export const NETWORK = 'mainnet' as const;
 
@@ -17,32 +20,108 @@ export const NETWORK = 'mainnet' as const;
 // Constants
 // ---------------------------------------------------------------------------
 
-import { WALRUS_AGGREGATORS, PRIMARY_AGGREGATOR } from './walrus-providers';
-
 const UPLOAD_RELAY_HOST = 'https://upload-relay.mainnet.walrus.space';
 const AGGREGATOR = PRIMARY_AGGREGATOR;
 const AGGREGATORS = WALRUS_AGGREGATORS;
 
 export const WALRUS_AGGREGATOR = AGGREGATOR;
 
-
-
-
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
-export type UploadStatus = 'pending' | 'encoding' | 'registering' | 'uploading' | 'certifying' | 'success' | 'failed';
+/** Granular upload step for UI progress display */
+export type UploadStatus =
+  | 'pending'
+  | 'encoding'
+  | 'checking'
+  | 'registering'
+  | 'uploading'
+  | 'certifying'
+  | 'success'
+  | 'failed';
+
 export interface UploadProgress {
   status: UploadStatus;
+  /** Human-readable label shown to the user */
+  message: string;
   provider?: string;
-  attempt?: number;
-  message?: string;
 }
 
 export interface WalrusSigner {
   signAndExecute(transaction: unknown): Promise<{ digest: string }>;
   address: string;
+}
+
+// ---------------------------------------------------------------------------
+// Error classification
+// ---------------------------------------------------------------------------
+
+export type WalrusErrorKind =
+  | 'user_rejected'       // User cancelled wallet popup
+  | 'insufficient_funds'  // Not enough SUI/WAL
+  | 'network_timeout'     // Request timed out
+  | 'publisher_error'     // 502/503 from storage nodes
+  | 'already_certified'   // Blob already on-chain (treat as success)
+  | 'unknown';
+
+export interface WalrusError {
+  kind: WalrusErrorKind;
+  /** Short user-friendly message */
+  userMessage: string;
+  /** Full technical detail for console */
+  detail: string;
+}
+
+export function classifyWalrusError(err: unknown): WalrusError {
+  const msg = err instanceof Error ? err.message : String(err);
+  const lower = msg.toLowerCase();
+
+  if (/user rejected|user denied|cancelled|rejected the request/i.test(msg)) {
+    return {
+      kind: 'user_rejected',
+      userMessage: 'Upload cancelled.',
+      detail: msg,
+    };
+  }
+
+  if (/insufficient|not enough|balance|budget|gas|wal.*fund|fund.*wal/i.test(lower)) {
+    return {
+      kind: 'insufficient_funds',
+      userMessage: 'Insufficient SUI or WAL. Please top up your wallet and try again.',
+      detail: msg,
+    };
+  }
+
+  if (/timeout|timed out|etimedout|econnreset|econnaborted/i.test(lower)) {
+    return {
+      kind: 'network_timeout',
+      userMessage: 'Upload timed out. Please check your connection and try again.',
+      detail: msg,
+    };
+  }
+
+  if (/502|503|504|bad gateway|service unavailable|publisher/i.test(lower)) {
+    return {
+      kind: 'publisher_error',
+      userMessage: 'Walrus network is temporarily unavailable. Please try again in a moment.',
+      detail: msg,
+    };
+  }
+
+  if (/already certified|already stored|alreadycertified/i.test(lower)) {
+    return {
+      kind: 'already_certified',
+      userMessage: 'File is already stored on Walrus.',
+      detail: msg,
+    };
+  }
+
+  return {
+    kind: 'unknown',
+    userMessage: msg.length > 120 ? msg.slice(0, 120) + '…' : msg,
+    detail: msg,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -88,7 +167,8 @@ function getWalrusClient(): WalrusClient {
     _walrusClient = new WalrusClient({
       network: NETWORK,
       suiClient: suiClient as any,
-      // FIX: Upload relay routes through relay server instead of hitting 2200+ storage nodes
+      // Upload relay distributes blob shards to storage nodes.
+      // This is NOT the server-side fallback — it is the correct Mainnet path.
       uploadRelay: {
         host: UPLOAD_RELAY_HOST,
       },
@@ -98,7 +178,14 @@ function getWalrusClient(): WalrusClient {
 }
 
 // ---------------------------------------------------------------------------
-// Main upload – writeBlobFlow (simpler + faster than writeFilesFlow)
+// Main upload — wallet-signed, browser-only
+//
+// Flow:
+//   1. encode  (WASM, no wallet)
+//   2. pre-check if already certified (skip wallet popups if so)
+//   3. register tx → wallet popup #1
+//   4. upload via relay (no wallet — relay handles shard distribution)
+//   5. certify tx → wallet popup #2
 // ---------------------------------------------------------------------------
 
 export async function uploadBytesToWalrus(
@@ -107,6 +194,10 @@ export async function uploadBytesToWalrus(
   epochs = 1,
   onProgress?: (p: UploadProgress) => void,
 ): Promise<WalrusUploadResponse> {
+  if (!signer?.address) {
+    throw new Error('Wallet not connected. Please connect your Sui wallet to upload files.');
+  }
+
   // Normalise to Uint8Array
   let bytes: Uint8Array;
   if (data instanceof Uint8Array) {
@@ -117,62 +208,76 @@ export async function uploadBytesToWalrus(
     bytes = new Uint8Array(await (data as Blob).arrayBuffer());
   }
 
-  onProgress?.({ status: 'encoding', message: 'Encoding data...' });
+  onProgress?.({ status: 'encoding', message: 'Preparing file…' });
 
-  try {
-    const walrusClient = getWalrusClient();
-    const flow = walrusClient.writeBlobFlow({ blob: bytes });
+  const walrusClient = getWalrusClient();
+  const flow = walrusClient.writeBlobFlow({ blob: bytes });
 
-    const encoded = await flow.encode();
-    const blobId = encoded.blobId;
+  // Step 1: Encode (browser WASM — no network, no wallet)
+  const encoded = await flow.encode();
+  const blobId = encoded.blobId;
 
-    // Pre-check: if already on Walrus, skip wallet popups
+  // Step 2: Pre-check — if blob is already certified, skip both wallet popups
+  onProgress?.({ status: 'checking', message: 'Checking if already stored…' });
   try {
     const existing = await readBlobFromWalrus(blobId);
     if (existing) {
-      onProgress?.({ status: 'success', message: 'Already on Walrus ✓' });
+      onProgress?.({ status: 'success', message: 'Already stored on Walrus ✓' });
       return { blobId, objectId: '', endEpoch: 0 };
     }
-  } catch { /* not found, continue with upload */ }
+  } catch {
+    // Not found — continue with upload
+  }
 
-  // 1. Register (wallet popup #1)
-  onProgress?.({ status: 'registering', message: 'Waiting for wallet approval (register)...' });
+  // Step 3: Register tx (wallet popup #1)
+  onProgress?.({ status: 'registering', message: 'Approve in wallet — registering storage…' });
   const registerTx = flow.register({ owner: signer.address, deletable: false, epochs });
 
   if (registerTx && registerTx.getData().commands.length > 0) {
     try {
       await signer.signAndExecute(registerTx);
     } catch (err: any) {
-      const msg = err.message || String(err);
-      if (msg.includes('User rejected') || msg.includes('rejected')) {
-        onProgress?.({ status: 'failed', message: 'Upload cancelled by user.' });
-        throw err;
-      }
-      if (!msg.includes('no balance changes')) {
-        console.warn('Register tx warning (may be pre-registered):', msg);
-      }
+      const classified = classifyWalrusError(err);
+      onProgress?.({ status: 'failed', message: classified.userMessage });
+      console.error('[Walrus] Register tx failed:', classified.detail);
+      // Create a typed error so the UI can differentiate
+      const typedErr = new Error(classified.userMessage);
+      (typedErr as any).walrusKind = classified.kind;
+      throw typedErr;
     }
   }
 
-  // 2. Upload via relay (no wallet popup — relay handles storage node distribution)
-  onProgress?.({ status: 'uploading', message: 'Uploading to Walrus network...' });
-  // FIX: No `digest` argument — that is only for resume from a previous encode step
-  const uploaded = await flow.upload();
+  // Step 4: Upload blob shards via relay (no wallet needed)
+  onProgress?.({ status: 'uploading', message: 'Uploading to Walrus network…' });
+  let uploaded: Awaited<ReturnType<typeof flow.upload>>;
+  try {
+    uploaded = await flow.upload();
+  } catch (err: any) {
+    const classified = classifyWalrusError(err);
+    onProgress?.({ status: 'failed', message: classified.userMessage });
+    console.error('[Walrus] Upload to relay failed:', classified.detail);
+    const typedErr = new Error(classified.userMessage);
+    (typedErr as any).walrusKind = classified.kind;
+    throw typedErr;
+  }
 
-  // 3. Certify (wallet popup #2)
-  onProgress?.({ status: 'certifying', message: 'Waiting for wallet approval (certify)...' });
+  // Step 5: Certify tx (wallet popup #2)
+  onProgress?.({ status: 'certifying', message: 'Approve in wallet — certifying upload…' });
   const certifyTx = flow.certify();
   if (certifyTx && certifyTx.getData().commands.length > 0) {
     try {
       await signer.signAndExecute(certifyTx);
     } catch (err: any) {
-      const msg = err.message || String(err);
-      if (msg.includes('User rejected') || msg.includes('rejected')) {
-        onProgress?.({ status: 'failed', message: 'Upload cancelled by user.' });
-        throw err;
-      }
-      if (!msg.includes('no balance changes')) {
-        console.warn('Certify tx warning (may be pre-certified):', msg);
+      const classified = classifyWalrusError(err);
+      // If already certified (e.g. parallel upload), treat as success
+      if (classified.kind === 'already_certified') {
+        console.info('[Walrus] Already certified — treating as success.');
+      } else {
+        onProgress?.({ status: 'failed', message: classified.userMessage });
+        console.error('[Walrus] Certify tx failed:', classified.detail);
+        const typedErr = new Error(classified.userMessage);
+        (typedErr as any).walrusKind = classified.kind;
+        throw typedErr;
       }
     }
   }
@@ -183,54 +288,11 @@ export async function uploadBytesToWalrus(
 
   onProgress?.({ status: 'success', message: `Stored on Walrus ✓ (${cleanBlobId.slice(0, 12)}…)` });
 
-    return {
-      blobId: cleanBlobId,
-      objectId: uploaded.blobObjectId ?? '',
-      endEpoch: 0,
-    };
-  } catch (err: any) {
-    const msg = err.message || String(err);
-    const isUserRejection = /user rejected|cancelled|rejected/i.test(msg);
-
-    // If user rejected, don't fallback to server (server can't bypass wallet)
-    if (isUserRejection) {
-      onProgress?.({ status: 'failed', message: 'Upload cancelled by user.' });
-      throw err;
-    }
-
-    console.warn('[Walrus] Native SDK failed. Error details:', {
-      message: msg,
-      stack: err.stack,
-      error: err
-    });
-
-    onProgress?.({ status: 'uploading', message: 'Native upload failed (see console), trying server relay...' });
-    
-    // Fallback to our robust server-side /api/walrus/upload
-    const res = await fetch('/api/walrus/upload?epochs=' + epochs, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/octet-stream' },
-      body: bytes as any,
-    });
-    
-    if (!res.ok) {
-      const txt = await res.text();
-      if (res.status === 502 || res.status === 503 || res.status === 504) {
-        throw new Error(`Walrus Mainnet requires a wallet-signed upload. Please ensure your wallet is connected and funded with SUI/WAL. (Status: ${res.status})`);
-      }
-      throw new Error(`API Relay failed: ${res.status} ${txt}`);
-    }
-    
-    const data = await res.json();
-    if (!data.blobId) throw new Error('API Relay failed to return blobId');
-    
-    onProgress?.({ status: 'success', message: `Stored via Relay ✓ (${data.blobId.slice(0, 12)}…)` });
-    return {
-      blobId: data.blobId,
-      objectId: data.objectId || '',
-      endEpoch: data.endEpoch || epochs,
-    };
-  }
+  return {
+    blobId: cleanBlobId,
+    objectId: uploaded.blobObjectId ?? '',
+    endEpoch: 0,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -240,7 +302,7 @@ export async function uploadBytesToWalrus(
 export async function uploadJsonToWalrus<T>(
   data: T,
   signer: WalrusSigner,
-  epochs = 3,
+  epochs = 1,
   onProgress?: (p: UploadProgress) => void,
 ): Promise<WalrusUploadResponse> {
   return uploadBytesToWalrus(JSON.stringify(data), signer, epochs, onProgress);
@@ -249,7 +311,7 @@ export async function uploadJsonToWalrus<T>(
 export async function uploadFileToWalrus(
   file: File,
   signer: WalrusSigner,
-  epochs = 3,
+  epochs = 1,
   onProgress?: (p: UploadProgress) => void,
 ): Promise<WalrusUploadResponse> {
   const bytes = new Uint8Array(await file.arrayBuffer());

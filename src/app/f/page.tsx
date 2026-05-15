@@ -3,7 +3,7 @@ import { useState, useEffect, useRef, Suspense } from 'react';
 import { useCurrentAccount, useCurrentWallet } from '@mysten/dapp-kit-react';
 import { ConnectButton } from '@mysten/dapp-kit-react/ui';
 import { dAppKit } from '@/app/dapp-kit';
-import { readJsonFromWalrus, uploadJsonToWalrus, uploadBytesToWalrus } from '@/lib/walrus';
+import { readJsonFromWalrus, uploadJsonToWalrus, uploadBytesToWalrus, type UploadProgress, type WalrusErrorKind } from '@/lib/walrus';
 import { getFormByObjectId } from '@/lib/walrus-onchain';
 import type { FormConfig, Submission, SessionField } from '@/types/walform';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -21,12 +21,14 @@ interface FlowState {
 }
 
 // ── Field renderer ───────────────────────────────────────────────
-function FieldInput({ field, value, onChange, onFile, uploading, allData, onDataChange }: {
+function FieldInput({ field, value, onChange, onFile, uploading, uploadStep, walletConnected, allData, onDataChange }: {
   field: SessionField;
   value: string | string[] | boolean;
   onChange: (v: string | string[] | boolean) => void;
   onFile: (f: File | File[]) => Promise<void>;
   uploading: boolean;
+  uploadStep?: UploadProgress;
+  walletConnected: boolean;
   allData: Record<string, any>;
   onDataChange: (id: string, v: any) => void;
 }) {
@@ -112,21 +114,72 @@ function FieldInput({ field, value, onChange, onFile, uploading, allData, onData
       );
     }
     case 'file': {
-      const triggerInput = () => (document.getElementById(`fi-${field.id}`) as HTMLInputElement)?.click();
+      const triggerInput = () => {
+        if (!walletConnected) return; // guard handled below
+        (document.getElementById(`fi-${field.id}`) as HTMLInputElement)?.click();
+      };
+
+      // Step label shown during upload
+      const stepLabel: Record<string, string> = {
+        encoding:    'Preparing file…',
+        checking:    'Checking Walrus…',
+        registering: 'Approve in wallet — registering…',
+        uploading:   'Uploading to Walrus network…',
+        certifying:  'Approve in wallet — certifying…',
+        success:     'Stored ✓',
+        failed:      'Upload failed',
+      };
+
       return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          <input id={`fi-${field.id}`} type="file" multiple style={{ display: 'none' }} onChange={async e => { const files = Array.from(e.target.files || []); if (files.length) await onFile(files); e.target.value = ''; }} />
-          <button type="button" onClick={triggerInput} className="btn btn-secondary btn-sm" disabled={uploading} style={{ width: 'fit-content' }}>
-            {uploading ? <><span className="spinner" />Uploading…</> : 'Choose File'}
-          </button>
+          <input
+            id={`fi-${field.id}`}
+            type="file"
+            multiple
+            style={{ display: 'none' }}
+            onChange={async e => {
+              const files = Array.from(e.target.files || []);
+              if (files.length) await onFile(files);
+              e.target.value = '';
+            }}
+          />
+
+          {!walletConnected ? (
+            <div style={{ padding: '12px 16px', background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.2)', borderRadius: 10, fontSize: 13, color: 'var(--text-2)', display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span>🔒</span>
+              <span>Connect your wallet to upload files to Walrus.</span>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={triggerInput}
+              className="btn btn-secondary btn-sm"
+              disabled={uploading}
+              style={{ width: 'fit-content', minWidth: 140 }}
+            >
+              {uploading
+                ? <><span className="spinner" />{uploadStep?.message || 'Uploading…'}</>
+                : '📎 Choose File'}
+            </button>
+          )}
+
+          {/* Upload step progress bar */}
+          {uploading && uploadStep && (
+            <div style={{ fontSize: 12, color: 'var(--accent-2)', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span className="spinner" style={{ width: 10, height: 10, flexShrink: 0 }} />
+              <span>{stepLabel[uploadStep.status] || uploadStep.message}</span>
+            </div>
+          )}
+
+          {/* Uploaded blob IDs */}
           {Array.isArray(value) && (value as string[]).map((blobId, i) => (
-            <div key={i} style={{ padding: '10px 14px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)', borderRadius: 10, fontSize: 13, color: 'var(--text-3)', fontFamily: 'var(--mono)' }}>
-              📎 blob-{blobId.slice(0, 20)}…
+            <div key={i} style={{ padding: '10px 14px', background: 'rgba(16,185,129,0.04)', border: '1px solid rgba(16,185,129,0.15)', borderRadius: 10, fontSize: 13, color: 'var(--text-2)', fontFamily: 'var(--mono)', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ color: 'var(--success)' }}>✓</span> blob-{blobId.slice(0, 20)}…
             </div>
           ))}
           {value && typeof value === 'string' && (
-            <div style={{ padding: '10px 14px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)', borderRadius: 10, fontSize: 13, color: 'var(--text-3)', fontFamily: 'var(--mono)' }}>
-              📎 blob-{(value as string).slice(0, 20)}…
+            <div style={{ padding: '10px 14px', background: 'rgba(16,185,129,0.04)', border: '1px solid rgba(16,185,129,0.15)', borderRadius: 10, fontSize: 13, color: 'var(--text-2)', fontFamily: 'var(--mono)', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ color: 'var(--success)' }}>✓</span> blob-{(value as string).slice(0, 20)}…
             </div>
           )}
         </div>
@@ -232,10 +285,13 @@ function FormPageContent() {
 
   const [status, setStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
   const [errMsg, setErrMsg] = useState('');
+  const [errKind, setErrKind] = useState<WalrusErrorKind | null>(null);
   const [flow, setFlow] = useState<FlowState>({ walrus: 'idle', suiTx: 'idle', receipt: 'idle' });
   const [receipt, setReceipt] = useState<{ blobId: string; txDigest: string; rootHash: string } | null>(null);
   const [currentStep, setCurrentStep] = useState(0);
   const [direction, setDirection] = useState<1 | -1>(1);
+  /** Per-field upload progress for file fields */
+  const [fileProgress, setFileProgress] = useState<Record<string, UploadProgress>>({});
 
   // ── Draft: auto-save on every data change ──
   useEffect(() => {
@@ -268,44 +324,56 @@ function FormPageContent() {
     })();
   }, [formObjectId]);
 
-  // ── File upload ──
+  // ── File upload (wallet-signed Walrus upload) ──
   const handleFile = async (fieldId: string, files: File | File[]) => {
-    if (!account) { setErrMsg('Connect wallet to upload files'); return; }
-    
+    if (!account) {
+      setErrMsg('Connect your wallet to upload files.');
+      return;
+    }
+
     setFileUploading(prev => ({ ...prev, [fieldId]: true }));
+    setFileProgress(prev => ({ ...prev, [fieldId]: { status: 'pending', message: 'Starting…' } }));
     setErrMsg('');
+    setErrKind(null);
 
     try {
-      const signer = { 
-        address: account.address, 
-        signAndExecute: async (tx: any) => { 
-          const r = await dAppKit.signAndExecuteTransaction({ transaction: tx }); 
-          const digest = (r as any)?.Transaction?.digest ?? (r as any)?.digest; 
-          if (!digest) throw new Error('Wallet signing failed'); 
-          return { digest }; 
-        } 
+      const signer = {
+        address: account.address,
+        signAndExecute: async (tx: any) => {
+          const r = await dAppKit.signAndExecuteTransaction({ transaction: tx });
+          const digest = (r as any)?.Transaction?.digest ?? (r as any)?.digest;
+          if (!digest) throw new Error('Wallet signing failed or was cancelled.');
+          return { digest };
+        },
       };
 
       const fileArray = Array.isArray(files) ? files : [files];
       const ids: string[] = [];
-      for (const f of fileArray) { 
-        const res = await uploadBytesToWalrus(f, signer, 1); 
-        ids.push(res.blobId); 
+
+      for (const f of fileArray) {
+        const res = await uploadBytesToWalrus(f, signer, 1, (progress) => {
+          setFileProgress(prev => ({ ...prev, [fieldId]: progress }));
+        });
+        ids.push(res.blobId);
       }
 
       setData(d => {
         const ex = d[fieldId];
         const arr = Array.isArray(ex) ? ex : (ex && typeof ex === 'string' ? [ex] : []);
         const combined = [...(arr as string[]), ...ids];
-        return { 
-          ...d, 
-          [fieldId]: combined.length === 1 ? combined[0] : combined 
+        return {
+          ...d,
+          [fieldId]: combined.length === 1 ? combined[0] : combined,
         };
       });
       setErrors(e => { const n = { ...e }; delete n[fieldId]; return n; });
+      setFileProgress(prev => ({ ...prev, [fieldId]: { status: 'success', message: 'Stored on Walrus ✓' } }));
     } catch (err: any) {
       console.error('[Upload] failed:', err);
-      setErrMsg(`Upload failed: ${err.message || 'Unknown error'}`);
+      const kind: WalrusErrorKind = err.walrusKind ?? 'unknown';
+      setErrKind(kind);
+      setErrMsg(err.message || 'Upload failed.');
+      setFileProgress(prev => ({ ...prev, [fieldId]: { status: 'failed', message: err.message || 'Upload failed.' } }));
     } finally {
       setFileUploading(prev => ({ ...prev, [fieldId]: false }));
     }
@@ -555,13 +623,36 @@ function FormPageContent() {
                     onChange={v => { setData(d => ({ ...d, [field.id]: v })); setErrors(e => { const n = {...e}; delete n[field.id]; return n; }); }}
                     onFile={files => handleFile(field.id, files)}
                     uploading={!!fileUploading[field.id]}
+                    uploadStep={fileProgress[field.id]}
+                    walletConnected={!!account}
                     allData={data}
                     onDataChange={(id, v) => { setData(d => ({ ...d, [id]: v })); setErrors(e => { const n = {...e}; delete n[id]; return n; }); }}
                   />
                 </div>
 
                 {errors[field.id] && <p style={{ fontSize: 13, color: 'var(--error)', marginBottom: 16 }}>{errors[field.id]}</p>}
-                {errMsg && <div className="alert-error" style={{ marginBottom: 16 }}>{errMsg}</div>}
+                {errMsg && (
+                  <div className="alert-error" style={{ marginBottom: 16 }}>
+                    {errKind === 'insufficient_funds' && (
+                      <div style={{ marginBottom: 6, fontWeight: 700 }}>💰 Insufficient SUI/WAL balance</div>
+                    )}
+                    {errKind === 'user_rejected' && (
+                      <div style={{ marginBottom: 6, fontWeight: 700 }}>✕ Cancelled</div>
+                    )}
+                    {errKind === 'network_timeout' && (
+                      <div style={{ marginBottom: 6, fontWeight: 700 }}>⏱ Network Timeout</div>
+                    )}
+                    {errKind === 'publisher_error' && (
+                      <div style={{ marginBottom: 6, fontWeight: 700 }}>⚠️ Walrus Network Issue</div>
+                    )}
+                    <span>{errMsg}</span>
+                    {errKind === 'insufficient_funds' && (
+                      <div style={{ marginTop: 8, fontSize: 12, opacity: 0.8 }}>
+                        Top up your wallet with SUI and WAL, then try again.
+                      </div>
+                    )}
+                  </div>
+                )}
                 {!account && isLast && (
                   <div style={{ marginBottom: 16, padding: '14px 16px', background: 'rgba(139,92,246,0.06)', border: '1px solid rgba(139,92,246,0.18)', borderRadius: 12, display: 'flex', alignItems: 'center', gap: 12 }}>
                     <span style={{ fontSize: 13, color: 'var(--text-2)', flex: 1 }}>Connect wallet to submit</span>
