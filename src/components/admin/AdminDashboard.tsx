@@ -181,19 +181,36 @@ function SubmissionDetail({ sub, idx, onStatusChange, decryptionSig, onUnlock, u
                       {!val && <span style={{ color: 'var(--text-4)', fontStyle: 'italic' }}>No answer</span>}
                       {f.type === 'file' && val ? (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                          {/* Media Preview */}
-                          {(typeof val === 'string' && (val.match(/\.(jpg|jpeg|png|gif|webp)$/i) || val.startsWith('blob:'))) ? (
-                            <img src={`https://publisher.walrus-testnet.walrus.site/v1/blobs/${val}`} alt="Preview" style={{ maxWidth: '100%', borderRadius: 10, border: '1px solid var(--border)' }} onError={(e) => {
-                              // If loading fails, fallback to simple ID
-                              (e.target as HTMLImageElement).style.display = 'none';
-                            }}/>
-                          ) : null}
+                           {/* Media Preview - Try to render anything that might be an image */}
+                           {typeof val === 'string' && (
+                             <div style={{ marginBottom: 8 }}>
+                               <img 
+                                 src={`https://aggregator.walrus-testnet.walrus.site/v1/blobs/${val}`} 
+                                 alt="Preview" 
+                                 style={{ maxWidth: '100%', maxHeight: 300, borderRadius: 10, border: '1px solid var(--border)', display: 'block' }} 
+                                 onError={(e) => {
+                                   (e.target as HTMLImageElement).style.display = 'none';
+                                 }}
+                               />
+                             </div>
+                           )}
                           <div className="mono" style={{ fontSize: 11, background: 'rgba(0,0,0,0.2)', padding: '6px 10px', borderRadius: 6, border: '1px solid var(--border)' }}>
                             {val}
                           </div>
-                          <button className="btn btn-secondary btn-sm" style={{ alignSelf: 'flex-start' }} onClick={() => onLookupWalrus(val)}>
-                            🔍 Lookup on Walrus
-                          </button>
+                          <div style={{ display: 'flex', gap: 8 }}>
+                            <button className="btn btn-secondary btn-sm" onClick={() => onLookupWalrus(val)}>
+                              🔍 View on Walrus
+                            </button>
+                            <a 
+                              href={`https://aggregator.walrus-testnet.walrus.site/v1/blobs/${val}`} 
+                              target="_blank" 
+                              rel="noreferrer"
+                              className="btn btn-secondary btn-sm"
+                              style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}
+                            >
+                              📥 Download
+                            </a>
+                          </div>
                         </div>
                       ) : Array.isArray(val) ? (
                         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
@@ -438,8 +455,17 @@ export function AdminDashboard() {
       if (!obj) throw new Error('Form object not found.');
       
       // Ownership check: must be the owner to manage in dashboard
-      if (account && obj.owner && obj.owner !== account.address) {
-        throw new Error('You are not the owner of this form.');
+      // Security: Check if current user is in admins list or the object owner
+      const cfg = JSON.parse(obj.configJson);
+      const isAdmin = account && (
+        (cfg.admins || []).includes(account.address) || 
+        obj.owner === account.address
+      );
+
+      if (!isAdmin) {
+        setErr('You are not authorized to view this form dashboard.');
+        setLoading(false);
+        return;
       }
 
       let form: FormConfig;

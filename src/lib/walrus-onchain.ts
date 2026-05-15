@@ -161,20 +161,39 @@ export async function getOwnedSubmissions(ownerAddress: string, formObjectId?: s
   try {
     const client = getSuiClient();
 
-    // Strategy: Use getOwnedObjects for efficiency and security.
-    // This only returns submissions that were transferred to the admin's address.
-    const resp = await client.getOwnedObjects({
-      owner: ownerAddress,
-      filter: { StructType: `${WALFORM_PACKAGE_ID}::walform::Submission` },
+    // Reverting to global query for discovery, but we will filter in UI.
+    // This ensures that even if objects are transferred or shared, they can be discovered.
+    const txResp = await (client as any).queryTransactionBlocks({
+      filter: { MoveFunction: { package: WALFORM_PACKAGE_ID, module: 'walform', function: 'register_submission' } },
+      options: { showObjectChanges: true, showEffects: true },
+      limit: 100,
+    });
+
+    const subObjectIds: string[] = [];
+    for (const tx of (txResp?.data ?? [])) {
+      for (const change of (tx.objectChanges ?? [])) {
+        if (
+          change.type === 'created' &&
+          typeof change.objectType === 'string' &&
+          change.objectType.includes('::walform::Submission')
+        ) {
+          subObjectIds.push(change.objectId);
+        }
+      }
+    }
+
+    if (subObjectIds.length === 0) return [];
+
+    const multiResp = await client.multiGetObjects({
+      ids: subObjectIds,
       options: { showContent: true },
     });
 
     const results = [];
-    for (const item of resp.data) {
+    for (const item of multiResp) {
       if (item.data?.content?.dataType !== 'moveObject') continue;
       const fields = (item.data.content as any).fields as Record<string, string>;
       
-      // Filter by formObjectId if specified
       if (formObjectId && fields.form_id !== formObjectId) continue;
       
       results.push({
