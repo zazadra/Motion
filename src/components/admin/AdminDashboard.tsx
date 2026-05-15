@@ -463,8 +463,8 @@ export function AdminDashboard() {
       );
 
       if (!isAdmin) {
-        setErr('You are not authorized to view this form dashboard.');
-        setLoading(false);
+        setOpenByIdError('You are not authorized to view this form dashboard.');
+        setOpenByIdLoading(false);
         return;
       }
 
