@@ -159,7 +159,7 @@ function FieldInput({ field, value, onChange, onFile, uploading, uploadStep, wal
               {!uploading && onEpochsChange && (
                 <div style={{ padding: '10px 14px', background: 'rgba(56,189,248,0.08)', border: '1px solid rgba(56,189,248,0.2)', borderRadius: 8, fontSize: 12, color: 'var(--text-2)', lineHeight: 1.5 }}>
                   <span style={{ color: '#38bdf8', fontWeight: 700, marginRight: 6 }}>ℹ️ Note:</span>
-                  Tentukan durasi penyimpanan (epoch) <strong>sebelum</strong> mengunggah file.
+                  Please select your desired storage duration (epoch) <strong>before</strong> uploading the file.
                 </div>
               )}
               <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
