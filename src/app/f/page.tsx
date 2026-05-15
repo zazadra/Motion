@@ -20,8 +20,11 @@ interface FlowState {
   receipt: FlowStep;
 }
 
+// ── Shared Storage State ─────────────────────────────────────────
+// Defines the number of epochs to store newly uploaded media.
+
 // ── Field renderer ───────────────────────────────────────────────
-function FieldInput({ field, value, onChange, onFile, uploading, uploadStep, walletConnected, allData, onDataChange }: {
+function FieldInput({ field, value, onChange, onFile, uploading, uploadStep, walletConnected, allData, onDataChange, mediaEpochs, onEpochsChange }: {
   field: SessionField;
   value: string | string[] | boolean;
   onChange: (v: string | string[] | boolean) => void;
@@ -31,6 +34,8 @@ function FieldInput({ field, value, onChange, onFile, uploading, uploadStep, wal
   walletConnected: boolean;
   allData: Record<string, any>;
   onDataChange: (id: string, v: any) => void;
+  mediaEpochs?: number;
+  onEpochsChange?: (epochs: number) => void;
 }) {
   const base = value as string;
   const renderAttached = () => {
@@ -150,17 +155,35 @@ function FieldInput({ field, value, onChange, onFile, uploading, uploadStep, wal
               <span>Connect your wallet to upload files to Walrus.</span>
             </div>
           ) : (
-            <button
-              type="button"
-              onClick={triggerInput}
-              className="btn btn-secondary btn-sm"
-              disabled={uploading}
-              style={{ width: 'fit-content', minWidth: 140 }}
-            >
-              {uploading
-                ? <><span className="spinner" />{uploadStep?.message || 'Uploading…'}</>
-                : '📎 Choose File'}
-            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                onClick={triggerInput}
+                className="btn btn-secondary btn-sm"
+                disabled={uploading}
+                style={{ width: 'fit-content', minWidth: 140 }}
+              >
+                {uploading
+                  ? <><span className="spinner" />{uploadStep?.message || 'Uploading…'}</>
+                  : '📎 Choose File'}
+              </button>
+              
+              {!uploading && onEpochsChange && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text-3)' }}>
+                  <span style={{ fontWeight: 600 }}>Duration:</span>
+                  <select 
+                    value={mediaEpochs || 1} 
+                    onChange={e => onEpochsChange(Number(e.target.value))}
+                    style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--text-1)', padding: '4px 8px', fontSize: 13, outline: 'none', cursor: 'pointer' }}
+                  >
+                    <option value={1} style={{ background: 'var(--bg)' }}>1 Epoch (~1 Week)</option>
+                    <option value={5} style={{ background: 'var(--bg)' }}>5 Epochs (~1 Month)</option>
+                    <option value={26} style={{ background: 'var(--bg)' }}>26 Epochs (~6 Months)</option>
+                    <option value={52} style={{ background: 'var(--bg)' }}>52 Epochs (~1 Year)</option>
+                  </select>
+                </div>
+              )}
+            </div>
           )}
 
           {/* Upload step progress bar */}
@@ -288,6 +311,9 @@ function FormPageContent() {
   const [errKind, setErrKind] = useState<WalrusErrorKind | null>(null);
   const [flow, setFlow] = useState<FlowState>({ walrus: 'idle', suiTx: 'idle', receipt: 'idle' });
   const [receipt, setReceipt] = useState<{ blobId: string; txDigest: string; rootHash: string } | null>(null);
+  
+  // Storage settings
+  const [mediaEpochs, setMediaEpochs] = useState<number>(1);
   const [currentStep, setCurrentStep] = useState(0);
   const [direction, setDirection] = useState<1 | -1>(1);
   /** Per-field upload progress for file fields */
@@ -351,7 +377,7 @@ function FormPageContent() {
       const ids: string[] = [];
 
       for (const f of fileArray) {
-        const res = await uploadBytesToWalrus(f, signer, 1, (progress) => {
+        const res = await uploadBytesToWalrus(f, signer, mediaEpochs, (progress) => {
           setFileProgress(prev => ({ ...prev, [fieldId]: progress }));
         });
         ids.push(res.blobId);
@@ -636,6 +662,8 @@ function FormPageContent() {
                     walletConnected={!!account}
                     allData={data}
                     onDataChange={(id, v) => { setData(d => ({ ...d, [id]: v })); setErrors(e => { const n = {...e}; delete n[id]; return n; }); }}
+                    mediaEpochs={mediaEpochs}
+                    onEpochsChange={setMediaEpochs}
                   />
                 </div>
 
