@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { useCurrentAccount, useCurrentWallet } from '@mysten/dapp-kit-react';
+import { useCurrentAccount, useCurrentWallet, useDAppKit } from '@mysten/dapp-kit-react';
 import { ConnectButton } from '@mysten/dapp-kit-react/ui';
 import { dAppKit } from '@/app/dapp-kit';
 import { readJsonFromWalrus, getWalrusScanUrl } from '@/lib/walrus';
@@ -379,7 +379,8 @@ function FloatingWalrus({ mousePos, isMobile }: { mousePos: { x: number, y: numb
 export default function Home() {
   const account = useCurrentAccount();
   const wallet = useCurrentWallet();
-  const disconnect = () => dAppKit.disconnectWallet();
+  const kit = useDAppKit();
+  const disconnect = () => kit.disconnectWallet();
   const address = account?.address;
 
   const [isMobile, setIsMobile] = useState(false);
@@ -621,14 +622,9 @@ export default function Home() {
       const messageBytes = new TextEncoder().encode(messageText);
       let walletSignature = '';
       try {
-        // Use standardized Sui Wallet feature for signing
-        const signFeature = (wallet as any)?.features?.['sui:signPersonalMessage'];
-        if (!signFeature) throw new Error("Wallet signing not supported by this wallet.");
-        const signResult = await signFeature.signPersonalMessage({ message: messageBytes });
-        // signResult is { signature: string (base64), bytes: string (base64) }
-        walletSignature = typeof signResult === 'object' && signResult !== null
-          ? (signResult as any).signature ?? ''
-          : '';
+        console.log("[Submission] Requesting signature via dApp Kit action...");
+        const signResult = await kit.signPersonalMessage({ message: messageBytes });
+        walletSignature = signResult.signature ?? '';
       } catch (signErr: any) {
         // User rejected in wallet
         if (signErr?.message?.toLowerCase().includes('reject') || signErr?.code === 4001) {

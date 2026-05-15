@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
-import { useCurrentAccount, useCurrentWallet } from '@mysten/dapp-kit-react';
+import { useCurrentAccount, useCurrentWallet, useDAppKit } from '@mysten/dapp-kit-react';
 import { ConnectButton } from '@mysten/dapp-kit-react/ui';
 import { dAppKit } from '@/app/dapp-kit';
 import { readJsonFromWalrus } from '@/lib/walrus';
@@ -273,6 +273,7 @@ function SubmissionList({ subs, selectedId, onSelect }: {
 export function AdminDashboard() {
   const account = useCurrentAccount();
   const wallet = useCurrentWallet();
+  const kit = useDAppKit();
 
   // Forms list
   const [forms, setForms] = useState<{ suiObjectId: string; configJson: string; formId: string; createdAt: number; title?: string }[]>([]);
@@ -294,37 +295,26 @@ export function AdminDashboard() {
   const [unlocking, setUnlocking] = useState(false);
 
   async function handleUnlock() {
-    console.log("[Admin] handleUnlock triggered", { account, wallet });
-    if (!account || !wallet) {
-      console.warn("[Admin] handleUnlock failed: account or wallet missing");
+    console.log("[Admin] handleUnlock triggered", { account });
+    if (!account) {
+      console.warn("[Admin] handleUnlock failed: account missing");
       return;
     }
     setUnlocking(true);
     try {
       const message = new TextEncoder().encode('Unlock Walform Submissions');
-      const features = (wallet as any)?.features;
-      const signFeature = features?.['sui:signPersonalMessage'] || features?.['sui:signMessage'];
+      console.log("[Admin] Requesting signature via dApp Kit action...");
+      const result = await kit.signPersonalMessage({ message });
       
-      if (!signFeature) throw new Error("Wallet does not support signing. Use Sui Wallet or OKX.");
-      
-      let signResult;
-      if (features?.['sui:signPersonalMessage']) {
-        console.log("[Admin] Using signPersonalMessage");
-        signResult = await features['sui:signPersonalMessage'].signPersonalMessage({ message });
-      } else {
-        console.log("[Admin] Using signMessage");
-        signResult = await features['sui:signMessage'].signMessage({ message });
-      }
-      const sig = typeof signResult === 'object' && signResult !== null
-        ? (signResult as any).signature ?? ''
-        : '';
-      
-      if (!sig) throw new Error('Failed to get signature');
-      console.log("[Admin] Signature received:", sig);
-      setDecryptionSig(sig);
+      if (!result.signature) throw new Error('Failed to get signature');
+      console.log("[Admin] Signature received");
+      setDecryptionSig(result.signature);
     } catch (e) {
       console.error('[Admin] Unlock error:', e);
-      alert('Unlock failed: ' + (e instanceof Error ? e.message : 'Unknown error'));
+      // Don't alert if user rejected
+      if (!(e instanceof Error && (e.message.includes('reject') || e.message.includes('cancel')))) {
+        alert('Unlock failed: ' + (e instanceof Error ? e.message : 'Unknown error'));
+      }
     }
     setUnlocking(false);
   }
