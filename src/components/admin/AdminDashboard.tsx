@@ -4,7 +4,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useCurrentAccount } from '@mysten/dapp-kit-react';
 import { ConnectButton } from '@mysten/dapp-kit-react/ui';
-import { dAppKit, getSuiClient } from '@/app/dapp-kit';
+import { dAppKit } from '@/app/dapp-kit';
 import { getOwnedForms, getOwnedSubmissions, getFormByObjectId, updateSubmissionStatus, updateSubmissionNote } from '@/lib/walrus-onchain';
 import { FormConfig, Submission } from '@/types/walform';
 import { decryptWithSeal, decryptData } from '@/lib/seal';
