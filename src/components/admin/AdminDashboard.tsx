@@ -58,7 +58,7 @@ function StatusBadge({ status, onClick }: { status: string; onClick?: () => void
 }
 
 // ── Submission detail panel ───────────────────────────────────────
-function SubmissionDetail({ sub, idx, onStatusChange, decryptionSig, onUnlock, unlocking, config, formId, onUpdateNote }: { 
+function SubmissionDetail({ sub, idx, onStatusChange, decryptionSig, onUnlock, unlocking, config, formId, onUpdateNote, isUserAdmin }: { 
   sub: Submission; 
   idx: number; 
   onStatusChange: (id: string, status: string) => void;
@@ -68,6 +68,7 @@ function SubmissionDetail({ sub, idx, onStatusChange, decryptionSig, onUnlock, u
   config: FormConfig | null;
   formId: string;
   onUpdateNote: (id: string, note: string) => void;
+  isUserAdmin: boolean;
 }) {
   const [activeTab, setActiveTab] = useState<'content' | 'meta'>('content');
   const [decryptedData, setDecryptedData] = useState<Record<string, any> | null>(null);
@@ -104,6 +105,16 @@ function SubmissionDetail({ sub, idx, onStatusChange, decryptionSig, onUnlock, u
   
   function onLookupWalrus(blobId: string) {
     window.open(`https://walruscan.com/testnet/blob/${blobId}`, '_blank');
+  }
+
+  if (!isUserAdmin) {
+    return (
+      <div className="card-premium" style={{ padding: 40, textAlign: 'center', border: '1px dashed var(--error)' }}>
+        <div style={{ fontSize: 40, marginBottom: 16 }}>⚠️</div>
+        <h3 style={{ fontSize: 18, fontWeight: 800, color: 'var(--error)', marginBottom: 8 }}>Access Denied</h3>
+        <p style={{ fontSize: 14, color: 'var(--text-2)' }}>You are not authorized to view the contents of this form. Only the owner and designated admins can see responses.</p>
+      </div>
+    );
   }
 
   return (
@@ -182,32 +193,39 @@ function SubmissionDetail({ sub, idx, onStatusChange, decryptionSig, onUnlock, u
                       {f.type === 'file' && val ? (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                            {/* Media Preview - Try to render anything that might be an image */}
-                           {typeof val === 'string' && (
-                             <div style={{ marginBottom: 8 }}>
-                               <img 
-                                 src={`https://aggregator.walrus-testnet.walrus.site/v1/blobs/${val}`} 
-                                 alt="Preview" 
-                                 style={{ maxWidth: '100%', maxHeight: 300, borderRadius: 10, border: '1px solid var(--border)', display: 'block' }} 
-                                 onError={(e) => {
-                                   (e.target as HTMLImageElement).style.display = 'none';
-                                 }}
-                               />
+                           {(Array.isArray(val) ? val : [val]).map((blobId: string) => (
+                             <div key={blobId} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                               <div style={{ marginBottom: 4 }}>
+                                 <img 
+                                   src={`https://aggregator.walrus-testnet.walrus.site/v1/blobs/${blobId}`} 
+                                   alt="Preview" 
+                                   style={{ maxWidth: '100%', maxHeight: 400, borderRadius: 10, border: '1px solid var(--border)', display: 'block' }} 
+                                   onError={(e) => {
+                                     (e.target as HTMLImageElement).style.display = 'none';
+                                   }}
+                                 />
+                               </div>
+                               <div className="mono" style={{ fontSize: 11, background: 'rgba(0,0,0,0.2)', padding: '6px 10px', borderRadius: 6, border: '1px solid var(--border)', wordBreak: 'break-all' }}>
+                                 {blobId}
+                               </div>
+                               <div style={{ display: 'flex', gap: 8 }}>
+                                 <button className="btn btn-secondary btn-sm" onClick={() => onLookupWalrus(blobId)}>
+                                   🔍 View on Walrus
+                                 </button>
+                                 <a 
+                                   href={`https://aggregator.walrus-testnet.walrus.site/v1/blobs/${blobId}`} 
+                                   target="_blank" 
+                                   rel="noreferrer"
+                                   className="btn btn-secondary btn-sm"
+                                   style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}
+                                 >
+                                   📥 Download
+                                 </a>
+                               </div>
                              </div>
-                           )}
-                          <div className="mono" style={{ fontSize: 11, background: 'rgba(0,0,0,0.2)', padding: '6px 10px', borderRadius: 6, border: '1px solid var(--border)' }}>
-                            {val}
-                          </div>
-                          <div style={{ display: 'flex', gap: 8 }}>
-                            <button className="btn btn-secondary btn-sm" onClick={() => onLookupWalrus(val)}>
-                              🔍 View on Walrus
-                            </button>
-                            <a 
-                              href={`https://aggregator.walrus-testnet.walrus.site/v1/blobs/${val}`} 
-                              target="_blank" 
-                              rel="noreferrer"
-                              className="btn btn-secondary btn-sm"
-                              style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}
-                            >
+                           ))}
+                        </div>
+                      ) : Array.isArray(val) ? (
                               📥 Download
                             </a>
                           </div>
@@ -477,10 +495,19 @@ export function AdminDashboard() {
     setOpenByIdLoading(false);
   }
 
-  const selectedForm = forms.find(f => f.suiObjectId === selectedFormId);
   const selectedSub = subs.find(s => s.id === selectedSubId);
   const selectedSubIdx = subs.findIndex(s => s.id === selectedSubId);
-  const parsedFormConfig = selectedForm ? JSON.parse(selectedForm.configJson) : null;
+  const selectedForm = forms.find(f => f.suiObjectId === selectedFormId);
+  const parsedFormConfig = useMemo(() => {
+    if (!selectedForm) return null;
+    try { return JSON.parse(selectedForm.configJson) as FormConfig; } catch { return null; }
+  }, [selectedForm]);
+
+  // Final permission check for the selected form
+  const isAdmin = useMemo(() => {
+    if (!selectedForm || !account || !parsedFormConfig) return false;
+    return (parsedFormConfig.admins || []).includes(account.address) || (selectedForm as any).owner === account.address;
+  }, [selectedForm, account, parsedFormConfig]);
 
   // ── Not connected ───────────────────────────────────────────────
   if (!account) {
@@ -632,6 +659,7 @@ export function AdminDashboard() {
                     config={parsedFormConfig}
                     formId={selectedFormId}
                     onUpdateNote={handleUpdateNote}
+                    isUserAdmin={isAdmin}
                   />
                 ) : (
                   <div className="empty-state">
