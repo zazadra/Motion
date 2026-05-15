@@ -88,7 +88,7 @@ export function classifyWalrusError(err: unknown): WalrusError {
   if (/insufficient|not enough|balance|budget|gas|wal.*fund|fund.*wal/i.test(lower)) {
     return {
       kind: 'insufficient_funds',
-      userMessage: 'Insufficient SUI or WAL. Please top up your wallet and try again.',
+      userMessage: 'Insufficient SUI or WAL balance. Top up your wallet and try again. (The register transaction includes a WAL relay tip.)',
       detail: msg,
     };
   }
@@ -167,10 +167,12 @@ function getWalrusClient(): WalrusClient {
     _walrusClient = new WalrusClient({
       network: NETWORK,
       suiClient: suiClient as any,
-      // Upload relay distributes blob shards to storage nodes.
-      // This is NOT the server-side fallback — it is the correct Mainnet path.
       uploadRelay: {
         host: UPLOAD_RELAY_HOST,
+        // The Mainnet relay requires a WAL tip payment.
+        // { max } → SDK auto-fetches the relay's /v1/tip-config and embeds the
+        // tip payment in the register tx. max caps the amount in MIST (0.1 WAL).
+        sendTip: { max: 100_000_000 },
       },
     });
   }
@@ -220,7 +222,7 @@ export async function uploadBytesToWalrus(
   // Step 2: Quick pre-check (3s timeout, primary aggregator only)
   // If the blob is already certified we can skip both wallet popups.
   try {
-    const check = await fetch(`${AGGREGATOR}/v1/blobs/${blobId.slice(0, 43)}`, {
+    const check = await fetch(`${AGGREGATOR}/v1/blobs/${encodeURIComponent(blobId)}`, {
       method: 'HEAD',
       signal: AbortSignal.timeout(3_000),
     });
