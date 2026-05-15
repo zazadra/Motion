@@ -347,7 +347,7 @@ export function FormBuilderTab({ config, onChange, ownerAddress }: {
             const { dAppKit } = await import('@/app/dapp-kit');
             
             // Need a signature to derive the master key for the seal
-            const sealMsg = `Initialize Walform Security Seal for: ${cfg.title}\nTimestamp: ${Date.now()}`;
+            const sealMsg = `Walform Security Seal\nForm ID: ${cfg.id}\n\nSign this message to authorize encryption/decryption.`;
             const { signature } = await dAppKit.signPersonalMessage({
               message: new TextEncoder().encode(sealMsg),
             });

@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ConnectButton, useCurrentAccount } from '@mysten/dapp-kit-react';
+import { useCurrentAccount } from '@mysten/dapp-kit-react';
+import { ConnectButton } from '@mysten/dapp-kit-react/ui';
 import { dAppKit, getSuiClient } from '@/app/dapp-kit';
 import { getOwnedForms, getOwnedSubmissions, getFormByObjectId, updateSubmissionStatus, updateSubmissionNote } from '@/lib/walrus-onchain';
 import { FormConfig, Submission } from '@/types/walform';
@@ -31,7 +32,7 @@ function SubmissionDetail({ sub, idx, config, onUpdateNote, onStatusChange, form
   async function onUnlock() {
     try {
       setUnlocking(true);
-      const msg = `Unlock Walform Submission: ${sub.id}\nTimestamp: ${Date.now()}`;
+      const msg = `Walform Security Seal\nForm ID: ${config?.id}\n\nSign this message to authorize encryption/decryption.`;
       const { signature } = await dAppKit.signPersonalMessage({ message: new TextEncoder().encode(msg) });
       setDecryptionSig(signature);
     } catch (e) {
@@ -283,13 +284,18 @@ export default function AdminDashboard() {
 
   const isAdmin = useMemo(() => {
     if (!selectedForm || !account || !parsedFormConfig) return false;
-    return (parsedFormConfig.admins || []).includes(account.address) || (selectedForm as any).owner === account.address;
+    const acc = account.address.toLowerCase();
+    const admins = (parsedFormConfig.admins || []).map(a => a.toLowerCase());
+    const owner1 = ((selectedForm as any).owner || '').toLowerCase();
+    const owner2 = (parsedFormConfig.publishedBy || '').toLowerCase();
+    return admins.includes(acc) || owner1 === acc || owner2 === acc;
   }, [selectedForm, account, parsedFormConfig]);
 
   const stats = {
     new: subs.filter(s => s.status === 'new' || !s.status).length,
     reviewing: subs.filter(s => s.status === 'reviewing').length,
-    done: subs.filter(s => s.status === 'done').length
+    done: subs.filter(s => s.status === 'done').length,
+    rejected: subs.filter(s => s.status === 'rejected').length
   };
 
   const selectedSub = subs.find(s => s.id === selectedSubId);
@@ -330,7 +336,7 @@ export default function AdminDashboard() {
                 <button className="btn btn-secondary btn-sm" onClick={() => exportData('json')}>JSON</button>
               </div>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 16 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, marginBottom: 16 }}>
               <div style={{ textAlign: 'center', background: 'rgba(255,255,255,0.03)', padding: 8, borderRadius: 8, border: '1px solid var(--border)' }}>
                 <p style={{ fontSize: 9, fontWeight: 800, color: 'var(--text-3)' }}>NEW</p>
                 <p style={{ fontSize: 16, fontWeight: 900 }}>{stats.new}</p>
@@ -342,6 +348,10 @@ export default function AdminDashboard() {
               <div style={{ textAlign: 'center', background: 'rgba(255,255,255,0.03)', padding: 8, borderRadius: 8, border: '1px solid var(--border)' }}>
                 <p style={{ fontSize: 9, fontWeight: 800, color: 'var(--text-3)' }}>DONE</p>
                 <p style={{ fontSize: 16, fontWeight: 900 }}>{stats.done}</p>
+              </div>
+              <div style={{ textAlign: 'center', background: 'rgba(239,68,68,0.05)', padding: 8, borderRadius: 8, border: '1px solid rgba(239,68,68,0.2)' }}>
+                <p style={{ fontSize: 9, fontWeight: 800, color: 'var(--error)' }}>REJECTED</p>
+                <p style={{ fontSize: 16, fontWeight: 900, color: 'var(--error)' }}>{stats.rejected}</p>
               </div>
             </div>
             {selectedForm && (
@@ -356,7 +366,7 @@ export default function AdminDashboard() {
               <button key={s.id} onClick={() => setSelectedSubId(s.id)} className={`sub-card-premium ${selectedSubId === s.id ? 'active' : ''}`} style={{ width: '100%', textAlign: 'left', marginBottom: 8, padding: 16, borderRadius: 12, border: '1px solid var(--border)', background: selectedSubId === s.id ? 'rgba(139,92,246,0.08)' : 'rgba(255,255,255,0.02)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
                   <span style={{ fontSize: 10, fontWeight: 800, color: 'var(--text-3)' }}>#{subs.length - i}</span>
-                  <span style={{ fontSize: 9, fontWeight: 800, color: s.status === 'done' ? '#34d399' : s.status === 'reviewing' ? '#fbbf24' : '#60a5fa' }}>{s.status || 'new'}</span>
+                  <span style={{ fontSize: 9, fontWeight: 800, color: s.status === 'done' ? '#34d399' : s.status === 'rejected' ? '#ef4444' : s.status === 'reviewing' ? '#fbbf24' : '#60a5fa' }}>{s.status || 'new'}</span>
                 </div>
                 <div style={{ fontSize: 12, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.submitterAddress || 'Anonymous'}</div>
                 <div style={{ fontSize: 10, color: 'var(--text-4)' }}>{new Date(s.timestamp).toLocaleDateString()}</div>
