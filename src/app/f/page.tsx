@@ -441,13 +441,19 @@ function FormPageContent() {
       let finalData = data;
       if (config.encryptionEnabled) {
         try {
-          const { encryptData } = await import('@/lib/seal');
-          // Key is derived deterministically from adminAddress + formId
-          // The admin wallet owner will derive the exact same key to decrypt
-          const adminAddress = config.publishedBy || config.admins[0];
-          const encKey = `walform:${adminAddress}:${formObjectId}`;
-          const encryptedPayload = await encryptData(JSON.stringify(data), encKey);
-          finalData = { __encrypted: encryptedPayload } as any;
+          const { encryptData, encryptForSeal } = await import('@/lib/seal');
+          
+          if (config.sealPublicKeyJwk) {
+            // New Asymmetric Seal (Correct & Accurate)
+            const encryptedPayload = await encryptForSeal(JSON.stringify(data), config.sealPublicKeyJwk);
+            finalData = { __encrypted: encryptedPayload } as any;
+          } else {
+            // Legacy Symmetric Seal (For older forms)
+            const adminAddress = config.publishedBy || config.admins[0];
+            const encKey = `walform:${adminAddress}:${formObjectId}`;
+            const encryptedPayload = await (encryptData as any)(JSON.stringify(data), encKey);
+            finalData = { __encrypted: encryptedPayload } as any;
+          }
         } catch (err) {
           console.error('[Encryption] Failed:', err);
           throw new Error('Encryption failed. Please try again.');

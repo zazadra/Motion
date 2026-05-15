@@ -29,6 +29,8 @@ export interface FormConfig {
   publishedSuiObjectId?: string; // Sui Form object ID (used as formId in /f/?formId=)
   publishedBy?: string; // ownerWallet
   encryptionEnabled?: boolean; // Seal encryption flag
+  sealPublicKeyJwk?: any;      // RSA Public Key for encryption
+  sealedPrivateKey?: string;   // RSA Private Key (encrypted with admin signature)
 }
 
 export interface Submission {

@@ -172,40 +172,41 @@ export async function getOwnedSubmissions(ownerAddress: string, formObjectId?: s
     const subObjectIds: string[] = [];
     for (const tx of (txResp?.data ?? [])) {
       for (const change of (tx.objectChanges ?? [])) {
-        if (
-          change.type === 'created' &&
-          typeof change.objectType === 'string' &&
-          change.objectType.includes('::walform::Submission')
-        ) {
-          subObjectIds.push(change.objectId);
+          if (
+            change.type === 'created' &&
+            typeof change.objectType === 'string' &&
+            change.objectType.includes('::walform::Submission')
+          ) {
+            subObjectIds.push(change.objectId);
+          }
         }
       }
-    }
 
-    if (subObjectIds.length === 0) return [];
+      if (subObjectIds.length === 0) return [];
 
-    const multiResp = await client.multiGetObjects({
-      ids: subObjectIds,
-      options: { showContent: true },
-    });
-
-    const results = [];
-    for (const item of multiResp) {
-      if (item.data?.content?.dataType !== 'moveObject') continue;
-      const fields = (item.data.content as any).fields as Record<string, string>;
-      
-      if (formObjectId && fields.form_id !== formObjectId) continue;
-      
-      results.push({
-        suiObjectId: item.data.objectId,
-        payloadJson: fields.payload_json,
-        formId: fields.form_id,
-        submitter: fields.submitter,
-        timestamp: Number(fields.timestamp ?? 0),
-        status: fields.status ?? 'new',
+      const multiResp = await client.multiGetObjects({
+        ids: subObjectIds,
+        options: { showContent: true },
       });
-    }
-    return results.sort((a, b) => b.timestamp - a.timestamp);
+
+      const results = [];
+      for (const item of multiResp) {
+        if (item.data?.content?.dataType !== 'moveObject') continue;
+        const fields = (item.data.content as any).fields as Record<string, string>;
+        
+        // CRITICAL: Filter by formId to prevent cross-form discovery leaks
+        if (formObjectId && fields.form_id !== formObjectId) continue;
+        
+        results.push({
+          suiObjectId: item.data.objectId,
+          payloadJson: fields.payload_json,
+          formId: fields.form_id,
+          submitter: fields.submitter,
+          timestamp: Number(fields.timestamp ?? 0),
+          status: fields.status ?? 'new',
+        });
+      }
+      return results.sort((a, b) => b.timestamp - a.timestamp);
   } catch (e) {
     console.error('[Sui] getOwnedSubmissions failed:', e);
     return [];
@@ -232,11 +233,17 @@ export async function getOwnedForms(ownerAddress: string): Promise<Array<{
       .filter(item => item.data?.content?.dataType === 'moveObject')
       .map(item => {
         const fields = (item.data!.content as any).fields as Record<string, string>;
+        const ownerInfo = item.data!.owner;
+        let ownerAddress = '';
+        if (ownerInfo && typeof ownerInfo === 'object') {
+          if ('AddressOwner' in ownerInfo) ownerAddress = ownerInfo.AddressOwner as string;
+        }
         return {
           suiObjectId: item.data!.objectId,
           configJson: fields.config_json,
           formId: fields.form_id,
           createdAt: Number(fields.created_at ?? 0),
+          owner: ownerAddress,
         };
       });
   } catch (e) {

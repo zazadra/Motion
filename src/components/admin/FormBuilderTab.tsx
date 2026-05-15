@@ -340,13 +340,31 @@ export function FormBuilderTab({ config, onChange, ownerAddress }: {
       try {
         const { WALFORM_PACKAGE_ID, createFormObject } = await import('@/lib/walrus-onchain');
         if (WALFORM_PACKAGE_ID && WALFORM_PACKAGE_ID.startsWith('0x')) {
-          console.log('[Sui] Creating Form object on-chain...');
-          setPubMsg('Step 1/2: Creating Sui Form object…');
+          let configToPublish = { ...cfg };
           
-          const configJson = JSON.stringify(cfg);
+          if (cfg.encryptionEnabled) {
+            setPubMsg('Step 1/3: Generating Security Seal...');
+            const { dAppKit } = await import('@/app/dapp-kit');
+            
+            // Need a signature to derive the master key for the seal
+            const sealMsg = `Initialize Walform Security Seal for: ${cfg.title}\nTimestamp: ${Date.now()}`;
+            const { signature } = await dAppKit.signPersonalMessage({
+              message: new TextEncoder().encode(sealMsg),
+            });
+            
+            const { generateSeal } = await import('@/lib/seal');
+            const { publicKeyJwk, sealedPrivateKey } = await generateSeal(signature);
+            
+            configToPublish.sealPublicKeyJwk = publicKeyJwk;
+            configToPublish.sealedPrivateKey = sealedPrivateKey;
+            console.log('[Seal] Security Seal generated and attached.');
+          }
+
+          setPubMsg('Step 2/3: Creating Sui Form object…');
+          const configJson = JSON.stringify(configToPublish);
           const txb = await createFormObject(cfg.id, configJson, ownerAddress);
           
-          setPubMsg('Step 2/2: Awaiting wallet signature...');
+          setPubMsg('Step 3/3: Awaiting wallet signature...');
           const { dAppKit } = await import('@/app/dapp-kit');
           const { getSuiClient } = await import('@/lib/walrus-onchain');
 
