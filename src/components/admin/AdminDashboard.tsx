@@ -216,7 +216,7 @@ export default function AdminDashboard() {
         timestamp: r.timestamp,
         data: JSON.parse(r.payloadJson).data,
         status: r.status,
-        note: (JSON.parse(r.payloadJson) as any).note || ''
+        note: r.note || ''
       })));
     } catch (e) { console.error(e); }
     finally { setLoading(false); }

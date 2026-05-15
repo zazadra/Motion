@@ -47,6 +47,7 @@ export interface Submission {
   suiObjectId?: string;
   status: string;
   adminNotes?: string;
+  note?: string;
 }
 
 // Walrus API response shape
