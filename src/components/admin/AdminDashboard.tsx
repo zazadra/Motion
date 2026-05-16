@@ -150,7 +150,7 @@ function SubmissionDetail({ sub, idx, config, onUpdateNote, onStatusChange, form
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, padding: '16px 20px', background: 'rgba(13,148,136,0.03)', borderRadius: 12, border: '1px solid rgba(13,148,136,0.1)' }}>
               <div>
                 <label style={{ display: 'block', fontSize: 9, fontWeight: 800, color: 'var(--text-3)', textTransform: 'uppercase', marginBottom: 4 }}>Submitter</label>
-                <p className="mono" style={{ fontSize: 12, color: 'var(--text-1)', wordBreak: 'break-all' }}>Anonymous Submitter</p>
+                <p className="mono" style={{ fontSize: 12, color: 'var(--text-1)', wordBreak: 'break-all' }}>{sub.submitterAddress}</p>
               </div>
               <div>
                 <label style={{ display: 'block', fontSize: 9, fontWeight: 800, color: 'var(--text-3)', textTransform: 'uppercase', marginBottom: 4 }}>Timestamp</label>
@@ -448,10 +448,10 @@ export default function AdminDashboard() {
   }, [selectedForm, account, parsedFormConfig]);
 
   const stats = {
-    new: subs.filter(s => s.status === 'new' || !s.status).length,
-    reviewing: subs.filter(s => s.status === 'reviewing').length,
-    done: subs.filter(s => s.status === 'done').length,
-    rejected: subs.filter(s => s.status === 'rejected').length
+    new: isAdmin ? subs.filter(s => s.status === 'new' || !s.status).length : 0,
+    reviewing: isAdmin ? subs.filter(s => s.status === 'reviewing').length : 0,
+    done: isAdmin ? subs.filter(s => s.status === 'done').length : 0,
+    rejected: isAdmin ? subs.filter(s => s.status === 'rejected').length : 0
   };
 
   const selectedSub = subs.find(s => s.id === selectedSubId);
@@ -556,7 +556,9 @@ export default function AdminDashboard() {
                   <span style={{ fontSize: 10, fontWeight: 800, color: 'var(--text-3)' }}>#{subs.length - i}</span>
                   <span style={{ fontSize: 9, fontWeight: 800, color: s.status === 'done' ? '#34d399' : s.status === 'rejected' ? '#ef4444' : s.status === 'reviewing' ? '#fbbf24' : '#60a5fa' }}>{s.status || 'new'}</span>
                 </div>
-                <div style={{ fontSize: 12, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>Anonymous Submitter</div>
+                <div style={{ fontSize: 12, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} className="mono">
+                  {s.submitterAddress.slice(0, 6)}...{s.submitterAddress.slice(-4)}
+                </div>
                 <div style={{ fontSize: 10, color: 'var(--text-4)' }}>{new Date(s.timestamp).toLocaleDateString()}</div>
               </button>
             ))}
