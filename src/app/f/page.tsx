@@ -603,7 +603,7 @@ function FormPageContent() {
           borderBottom: '1px solid rgba(255,255,255,0.08)', background: 'rgba(9,9,11,0.85)', backdropFilter: 'blur(16px)', zIndex: 90 
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 24, minWidth: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 12 : 24, minWidth: 0 }}>
           {/* Logo */}
           <a href="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
             <motion.img 
@@ -623,16 +623,35 @@ function FormPageContent() {
           </span>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 8 : 12 }}>
           <span className="hide-mobile" style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-3)', background: 'rgba(255,255,255,0.05)', padding: '6px 12px', borderRadius: 999 }}>{currentStep + 1} of {totalSteps}</span>
-          {!account ? <ConnectButton instance={dAppKit} /> : <span style={{ fontSize: 12, padding: '6px 12px', borderRadius: 999, background: 'rgba(139,92,246,0.12)', border: '1px solid rgba(139,92,246,0.25)', color: 'var(--accent-2)', fontFamily: 'var(--mono)', fontWeight: 600 }}>{account.address.slice(0,6)}…{account.address.slice(-4)}</span>}
+          {!account ? (
+            <ConnectButton instance={dAppKit} />
+          ) : (
+            <span style={{ 
+              fontSize: isMobile ? 11 : 12, 
+              padding: isMobile ? '4px 10px' : '6px 12px', 
+              borderRadius: 999, 
+              background: 'rgba(139,92,246,0.12)', 
+              border: '1px solid rgba(139,92,246,0.25)', 
+              color: 'var(--accent-2)', 
+              fontFamily: 'var(--mono)', 
+              fontWeight: 600,
+              maxWidth: isMobile ? 100 : 'none',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap'
+            }}>
+              {shorten(account.address)}
+            </span>
+          )}
         </div>
       </div>
 
       {/* Content wrapper — top padding clears the fixed header on all screen sizes */}
       <div 
         className="form-content-wrapper"
-        style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: isMobile ? '80px 20px 40px' : '100px 40px 60px', position: 'relative' }}
+        style={{ flex: 1, display: 'flex', position: 'relative' }}
       >
         {/* Floating mascot — desktop decoration only */}
         <div className="form-mascot-deco" aria-hidden>
@@ -662,8 +681,11 @@ function FormPageContent() {
                 exit={{ opacity: 0, y: direction * -40 }}
                 transition={{ duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
               >
-                <div style={{ marginBottom: 8, fontSize: 13, fontWeight: 700, color: 'var(--accent-2)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>{currentStep + 1} →</div>
-                <h2 className="form-question-title" style={{ fontWeight: 800, color: 'var(--text-1)', marginBottom: 8, lineHeight: 1.2, letterSpacing: '-0.02em' }}>
+                <div style={{ marginBottom: 12, fontSize: 12, fontWeight: 700, color: 'var(--accent-2)', letterSpacing: '0.12em', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ width: 24, height: 1, background: 'var(--accent-2)', opacity: 0.3 }} />
+                  {currentStep + 1} OF {totalSteps}
+                </div>
+                <h2 className="form-question-title" style={{ fontWeight: 800, color: 'var(--text-1)', marginBottom: 12, letterSpacing: '-0.02em' }}>
                   {field.label}{field.required && <span style={{ color: 'var(--accent-2)', marginLeft: 4 }}>*</span>}
                 </h2>
                 {field.description && <p style={{ fontSize: 14, color: 'var(--text-3)', marginBottom: 20, lineHeight: 1.6 }}>{field.description}</p>}
@@ -716,8 +738,8 @@ function FormPageContent() {
                 )}
                 <div style={{ 
                   display: 'flex', 
-                  flexDirection: (isMobile && isLast) ? 'column-reverse' : 'row', 
-                  alignItems: (isMobile && isLast) ? 'stretch' : 'center', 
+                  flexDirection: isMobile ? 'column-reverse' : 'row', 
+                  alignItems: isMobile ? 'stretch' : 'center', 
                   gap: 12 
                 }}>
                   {currentStep > 0 && (
@@ -728,7 +750,8 @@ function FormPageContent() {
                         padding: '13px 24px', 
                         fontSize: 15, 
                         flexShrink: 0,
-                        opacity: 0.8
+                        opacity: 0.8,
+                        flex: isMobile ? 1 : 'none'
                       }}
                     >
                       ← Back
@@ -756,7 +779,8 @@ function FormPageContent() {
                       style={{ 
                         padding: '13px 32px', 
                         fontSize: 15,
-                        minWidth: 120
+                        flex: 1,
+                        minWidth: isMobile ? 'none' : 120
                       }}
                     >
                       OK →
