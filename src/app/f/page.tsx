@@ -295,10 +295,10 @@ function FlowSidebar({ flow, receipt }: {
 
 // ── Main page content (needs Suspense boundary for useSearchParams) ──
 function FormPageContent() {
+  const isMobile = useIsMobile();
   const account = useCurrentAccount();
   const wallet = useCurrentWallet();
   const searchParams = useSearchParams();
-  const isMobile = useIsMobile();
   const formObjectId = searchParams.get('formId') || '';
 
   const [config, setConfig] = useState<FormConfig | null>(null);
@@ -716,8 +716,8 @@ function FormPageContent() {
                 )}
                 <div style={{ 
                   display: 'flex', 
-                  flexDirection: (useIsMobile() && isLast) ? 'column-reverse' : 'row', 
-                  alignItems: (useIsMobile() && isLast) ? 'stretch' : 'center', 
+                  flexDirection: (isMobile && isLast) ? 'column-reverse' : 'row', 
+                  alignItems: (isMobile && isLast) ? 'stretch' : 'center', 
                   gap: 12 
                 }}>
                   {currentStep > 0 && (

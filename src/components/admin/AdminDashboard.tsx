@@ -71,6 +71,7 @@ function SubmissionDetail({ sub, idx, config, onUpdateNote, onStatusChange, form
   onDecrypted?: (id: string, data: any) => void;
   onShowToast: (msg: string, type?: 'success' | 'error') => void;
 }) {
+  const isMobile = useIsMobile();
   const [activeTab, setActiveTab] = useState<'content' | 'meta'>('content');
   const [decryptedData, setDecryptedData] = useState<any>(null);
   const [decryptErr, setDecryptErr] = useState(false);
@@ -128,7 +129,7 @@ function SubmissionDetail({ sub, idx, config, onUpdateNote, onStatusChange, form
     <div className="card-premium" style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       {/* Header */}
       <div style={{ 
-        padding: useIsMobile() ? '72px 16px 24px' : '24px 32px', 
+        padding: isMobile ? '72px 16px 24px' : '24px 32px', 
         borderBottom: '1px solid var(--border)', 
         background: 'rgba(255,255,255,0.01)', 
         display: 'flex', 
@@ -137,7 +138,7 @@ function SubmissionDetail({ sub, idx, config, onUpdateNote, onStatusChange, form
         flexShrink: 0 
       }}>
         <div>
-          <h2 style={{ fontSize: useIsMobile() ? 18 : 20, fontWeight: 900, letterSpacing: '-0.02em' }}>Submission #{idx + 1}</h2>
+          <h2 style={{ fontSize: isMobile ? 18 : 20, fontWeight: 900, letterSpacing: '-0.02em' }}>Submission #{idx + 1}</h2>
           <p className="mono" style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 4 }}>{sub.id}</p>
         </div>
         <div className="tab-pill">
