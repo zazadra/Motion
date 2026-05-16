@@ -278,6 +278,7 @@ export default function AdminDashboard() {
   const [decryptionSig, setDecryptionSig] = useState<string | null>(null);
   const [decryptedDataMap, setDecryptedDataMap] = useState<Record<string, any>>({});
   const [toast, setToast] = useState<{message: string, visible: boolean}>({ message: '', visible: false });
+  const [statusFilter, setStatusFilter] = useState<string | null>(null);
 
   function showToast(msg: string) {
     setToast({ message: msg, visible: true });
@@ -399,9 +400,9 @@ export default function AdminDashboard() {
   }
 
   function exportData(type: 'csv' | 'json') {
-    if (subs.length === 0) return;
+    if (filteredSubs.length === 0) return;
     
-    const exportSubs = subs.map(s => ({
+    const exportSubs = filteredSubs.map(s => ({
       ...s,
       data: decryptedDataMap[s.id] || s.data
     }));
@@ -456,6 +457,11 @@ export default function AdminDashboard() {
 
   const selectedSub = subs.find(s => s.id === selectedSubId);
   const selectedSubIdx = subs.findIndex(s => s.id === selectedSubId);
+
+  const filteredSubs = useMemo(() => {
+    if (!statusFilter) return subs;
+    return subs.filter(s => (s.status || 'new') === statusFilter);
+  }, [subs, statusFilter]);
 
   if (!account) return <div style={{ height: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><ConnectButton instance={dAppKit} /></div>;
 
@@ -518,19 +524,31 @@ export default function AdminDashboard() {
             </div>
             {/* Status Grid Refinement */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8, marginBottom: 16 }}>
-              <div style={{ textAlign: 'center', background: 'rgba(255,255,255,0.03)', padding: '10px 8px', borderRadius: 12, border: '1px solid var(--border)', minWidth: 0 }}>
+              <div 
+                onClick={() => setStatusFilter(statusFilter === 'new' ? null : 'new')}
+                style={{ cursor: 'pointer', textAlign: 'center', background: statusFilter === 'new' ? 'rgba(13,148,136,0.1)' : 'rgba(255,255,255,0.03)', padding: '10px 8px', borderRadius: 12, border: statusFilter === 'new' ? '1px solid var(--accent)' : '1px solid var(--border)', minWidth: 0, transition: 'all 0.2s' }}
+              >
                 <p style={{ fontSize: 9, fontWeight: 800, color: 'var(--text-3)', letterSpacing: '0.05em' }}>NEW</p>
                 <p style={{ fontSize: 20, fontWeight: 900, color: 'var(--accent-2)' }}>{stats.new}</p>
               </div>
-              <div style={{ textAlign: 'center', background: 'rgba(255,255,255,0.03)', padding: '10px 8px', borderRadius: 12, border: '1px solid var(--border)', minWidth: 0 }}>
+              <div 
+                onClick={() => setStatusFilter(statusFilter === 'reviewing' ? null : 'reviewing')}
+                style={{ cursor: 'pointer', textAlign: 'center', background: statusFilter === 'reviewing' ? 'rgba(251,191,36,0.1)' : 'rgba(255,255,255,0.03)', padding: '10px 8px', borderRadius: 12, border: statusFilter === 'reviewing' ? '1px solid #fbbf24' : '1px solid var(--border)', minWidth: 0, transition: 'all 0.2s' }}
+              >
                 <p style={{ fontSize: 9, fontWeight: 800, color: 'var(--text-3)', letterSpacing: '0.05em' }}>REVIEWING</p>
-                <p style={{ fontSize: 20, fontWeight: 900 }}>{stats.reviewing}</p>
+                <p style={{ fontSize: 20, fontWeight: 900, color: statusFilter === 'reviewing' ? '#fbbf24' : 'var(--text-1)' }}>{stats.reviewing}</p>
               </div>
-              <div style={{ textAlign: 'center', background: 'rgba(255,255,255,0.03)', padding: '10px 8px', borderRadius: 12, border: '1px solid var(--border)', minWidth: 0 }}>
+              <div 
+                onClick={() => setStatusFilter(statusFilter === 'done' ? null : 'done')}
+                style={{ cursor: 'pointer', textAlign: 'center', background: statusFilter === 'done' ? 'rgba(16,185,129,0.1)' : 'rgba(255,255,255,0.03)', padding: '10px 8px', borderRadius: 12, border: statusFilter === 'done' ? '1px solid #10b981' : '1px solid var(--border)', minWidth: 0, transition: 'all 0.2s' }}
+              >
                 <p style={{ fontSize: 9, fontWeight: 800, color: 'var(--text-3)', letterSpacing: '0.05em' }}>DONE</p>
                 <p style={{ fontSize: 20, fontWeight: 900, color: '#10b981' }}>{stats.done}</p>
               </div>
-              <div style={{ textAlign: 'center', background: 'rgba(239,68,68,0.05)', padding: '10px 8px', borderRadius: 12, border: '1px solid rgba(239,68,68,0.2)', minWidth: 0 }}>
+              <div 
+                onClick={() => setStatusFilter(statusFilter === 'rejected' ? null : 'rejected')}
+                style={{ cursor: 'pointer', textAlign: 'center', background: statusFilter === 'rejected' ? 'rgba(239,68,68,0.1)' : 'rgba(239,68,68,0.05)', padding: '10px 8px', borderRadius: 12, border: statusFilter === 'rejected' ? '1px solid #ef4444' : '1px solid rgba(239,68,68,0.2)', minWidth: 0, transition: 'all 0.2s' }}
+              >
                 <p style={{ fontSize: 9, fontWeight: 800, color: 'var(--error)', letterSpacing: '0.05em' }}>REJECTED</p>
                 <p style={{ fontSize: 20, fontWeight: 900, color: 'var(--error)' }}>{stats.rejected}</p>
               </div>
@@ -548,12 +566,12 @@ export default function AdminDashboard() {
           <div style={{ flex: 1, overflow: 'auto', padding: 12 }}>
             {!isAdmin ? (
               <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-4)' }}>Access Denied. You do not have permission to view responses for this form.</div>
-            ) : loading ? <div className="spinner" /> : subs.length === 0 ? (
-              <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-4)' }}>No responses yet.</div>
-            ) : subs.map((s, i) => (
+            ) : loading ? <div className="spinner" /> : filteredSubs.length === 0 ? (
+              <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-4)' }}>No responses found.</div>
+            ) : filteredSubs.map((s) => (
               <button key={s.id} onClick={() => setSelectedSubId(s.id)} className={`sub-card-premium ${selectedSubId === s.id ? 'active' : ''}`} style={{ width: '100%', textAlign: 'left', marginBottom: 8, padding: 16, borderRadius: 12, border: '1px solid var(--border)', background: selectedSubId === s.id ? 'rgba(13,148,136,0.08)' : 'rgba(255,255,255,0.02)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                  <span style={{ fontSize: 10, fontWeight: 800, color: 'var(--text-3)' }}>#{subs.length - i}</span>
+                  <span style={{ fontSize: 10, fontWeight: 800, color: 'var(--text-3)' }}>#{subs.length - subs.indexOf(s)}</span>
                   <span style={{ fontSize: 9, fontWeight: 800, color: s.status === 'done' ? '#34d399' : s.status === 'rejected' ? '#ef4444' : s.status === 'reviewing' ? '#fbbf24' : '#60a5fa' }}>{s.status || 'new'}</span>
                 </div>
                 <div style={{ fontSize: 12, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} className="mono">
