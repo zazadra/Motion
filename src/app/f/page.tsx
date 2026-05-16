@@ -681,10 +681,14 @@ function FormPageContent() {
                 exit={{ opacity: 0, y: direction * -40 }}
                 transition={{ duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
               >
-                <div style={{ marginBottom: 12, fontSize: 12, fontWeight: 700, color: 'var(--accent-2)', letterSpacing: '0.12em', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ width: 24, height: 1, background: 'var(--accent-2)', opacity: 0.3 }} />
-                  {currentStep + 1} OF {totalSteps}
-                </div>
+                {isMobile ? (
+                  <div style={{ marginBottom: 12, fontSize: 12, fontWeight: 700, color: 'var(--accent-2)', letterSpacing: '0.12em', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ width: 24, height: 1, background: 'var(--accent-2)', opacity: 0.3 }} />
+                    {currentStep + 1} OF {totalSteps}
+                  </div>
+                ) : (
+                  <div style={{ marginBottom: 8, fontSize: 13, fontWeight: 700, color: 'var(--accent-2)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>{currentStep + 1} →</div>
+                )}
                 <h2 className="form-question-title" style={{ fontWeight: 800, color: 'var(--text-1)', marginBottom: 12, letterSpacing: '-0.02em' }}>
                   {field.label}{field.required && <span style={{ color: 'var(--accent-2)', marginLeft: 4 }}>*</span>}
                 </h2>
@@ -766,8 +770,9 @@ function FormPageContent() {
                       style={{ 
                         padding: '13px 28px', 
                         fontSize: 15,
-                        flex: 1,
-                        boxShadow: '0 8px 24px rgba(13,148,136,0.3)'
+                        flex: isMobile ? 1 : 'none',
+                        boxShadow: '0 8px 24px rgba(13,148,136,0.3)',
+                        minWidth: isMobile ? 'none' : 200
                       }}
                     >
                       {status === 'submitting' ? <><span className="spinner" />Submitting…</> : '🛡️ Complete Submission'}
@@ -779,7 +784,7 @@ function FormPageContent() {
                       style={{ 
                         padding: '13px 32px', 
                         fontSize: 15,
-                        flex: 1,
+                        flex: isMobile ? 1 : 'none',
                         minWidth: isMobile ? 'none' : 120
                       }}
                     >
