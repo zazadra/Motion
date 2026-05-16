@@ -17,23 +17,58 @@ function uid() { return Math.random().toString(36).slice(2, 10); }
 function shorten(a: string) { return `${a.slice(0,6)}-${a.slice(-4)}`; }
 
 // -- Single field renderer ------------------------------------------
-function FieldInput({ field, value, onChange, onFile, uploading, progressMsg }: {
+function FieldInput({ field, value, onChange, onFile, uploading, progressMsg, allData, onDataChange }: {
   field: SessionField;
   value: string | string[] | boolean;
   onChange: (v: string | string[] | boolean) => void;
   onFile: (f: File | File[]) => Promise<void>;
   uploading: boolean;
   progressMsg?: string;
+  allData: Record<string, any>;
+  onDataChange: (id: string, v: any) => void;
 }) {
   const base = value as string;
+  const renderAttached = () => {
+    if (!field.attachedCheckbox) return null;
+    const cbId = field.attachedCheckbox.id;
+    const cbVal = !!allData[cbId];
+    return (
+      <div style={{ marginTop: 12 }}>
+        <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontSize: '14px', color: 'var(--text-2)' }}>
+          <input 
+            type="checkbox" 
+            checked={cbVal} 
+            onChange={e => onDataChange(cbId, e.target.checked)} 
+            style={{ width: 16, height: 16, accentColor: 'var(--accent)', cursor: 'pointer' }} 
+          />
+          <span>{field.attachedCheckbox.label}</span>
+        </label>
+      </div>
+    );
+  };
   switch (field.type) {
     case 'text':
     case 'email':
-      return <input type={field.type} className="input" placeholder={field.placeholder} value={base||''} onChange={e=>onChange(e.target.value)} />;
+      return (
+        <div>
+          <input type={field.type} className="input" placeholder={field.placeholder} value={base||''} onChange={e=>onChange(e.target.value)} />
+          {renderAttached()}
+        </div>
+      );
     case 'url':
-      return <input type="url" className="input" placeholder={field.placeholder||'https://'} value={base||''} onChange={e=>onChange(e.target.value)} />;
+      return (
+        <div>
+          <input type="url" className="input" placeholder={field.placeholder||'https://'} value={base||''} onChange={e=>onChange(e.target.value)} />
+          {renderAttached()}
+        </div>
+      );
     case 'textarea':
-      return <textarea className="textarea" placeholder={field.placeholder} rows={4} value={base||''} onChange={e=>onChange(e.target.value)} />;
+      return (
+        <div>
+          <textarea className="textarea" placeholder={field.placeholder} rows={4} value={base||''} onChange={e=>onChange(e.target.value)} />
+          {renderAttached()}
+        </div>
+      );
     case 'select':
       return (
         <select className="select" value={base||''} onChange={e=>onChange(e.target.value)} style={{ background:'var(--card)', color:'var(--text-1)' }}>
@@ -174,7 +209,7 @@ function FieldInput({ field, value, onChange, onFile, uploading, progressMsg }: 
             </div>
           )}
           {uploading && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '14px', borderRadius: '10px', background: 'rgba(139, 92, 246, 0.05)', color: 'var(--accent-2)', fontSize: '13px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '14px', borderRadius: '10px', background: 'rgba(13, 148, 136, 0.05)', color: 'var(--accent-2)', fontSize: '13px' }}>
               <span className="spinner" /> {progressMsg || 'Uploading to Walrus...'}
             </div>
           )}
@@ -208,8 +243,8 @@ function ReferenceLink({ href, label }: { href: string; label: string }) {
         border: '1px solid rgba(255,255,255,0.03)'
       }}
       onMouseEnter={(e) => {
-        e.currentTarget.style.background = 'rgba(124,58,237,0.08)';
-        e.currentTarget.style.borderColor = 'rgba(124,58,237,0.2)';
+        e.currentTarget.style.background = 'rgba(13,148,136,0.08)';
+        e.currentTarget.style.borderColor = 'rgba(13,148,136,0.2)';
         e.currentTarget.style.color = '#fff';
         const arrow = e.currentTarget.querySelector('.arrow');
         if (arrow) (arrow as HTMLElement).style.transform = 'translateX(4px)';
@@ -308,7 +343,7 @@ function FloatingWalrus({ mousePos, isMobile }: { mousePos: { x: number, y: numb
         <motion.img 
           src="/walform-mascot.png" alt="Walrus Peek" animate={{ scaleY: [1, 1, 0.1, 1, 1] }}
           transition={{ duration: 0.2, repeat: Infinity, repeatDelay: 4 }}
-          style={{ width: '100%', height: 'auto', transform: 'rotate(-20deg)', filter: 'drop-shadow(0 0 30px rgba(124,58,237,0.4))' }} 
+          style={{ width: '100%', height: 'auto', transform: 'rotate(-20deg)', filter: 'drop-shadow(0 0 30px rgba(13,148,136,0.4))' }} 
         />
       </motion.div>
 
@@ -323,7 +358,7 @@ function FloatingWalrus({ mousePos, isMobile }: { mousePos: { x: number, y: numb
         <motion.img 
           src="/walform-mascot.png" alt="Walrus Peek" animate={{ scaleY: [1, 1, 0.1, 1, 1] }}
           transition={{ duration: 0.2, repeat: Infinity, repeatDelay: 3.5 }}
-          style={{ width: '100%', height: 'auto', transform: 'rotate(-110deg)', filter: 'drop-shadow(0 0 30px rgba(124,58,237,0.3))' }} 
+          style={{ width: '100%', height: 'auto', transform: 'rotate(-110deg)', filter: 'drop-shadow(0 0 30px rgba(13,148,136,0.3))' }} 
         />
       </motion.div>
 
@@ -338,7 +373,7 @@ function FloatingWalrus({ mousePos, isMobile }: { mousePos: { x: number, y: numb
         <motion.img 
           src="/walform-mascot.png" alt="Walrus Peek" animate={{ scaleY: [1, 1, 0.1, 1, 1] }}
           transition={{ duration: 0.2, repeat: Infinity, repeatDelay: 5 }}
-          style={{ width: '100%', height: 'auto', transform: 'rotate(110deg)', filter: 'drop-shadow(0 0 30px rgba(124,58,237,0.4))' }} 
+          style={{ width: '100%', height: 'auto', transform: 'rotate(110deg)', filter: 'drop-shadow(0 0 30px rgba(13,148,136,0.4))' }} 
         />
       </motion.div>
 
@@ -353,7 +388,7 @@ function FloatingWalrus({ mousePos, isMobile }: { mousePos: { x: number, y: numb
         <motion.img 
           src="/walform-mascot.png" alt="Walrus Peek" animate={{ scaleY: [1, 1, 0.1, 1, 1] }}
           transition={{ duration: 0.2, repeat: Infinity, repeatDelay: 4.5 }}
-          style={{ width: '100%', height: 'auto', transform: 'rotate(160deg)', filter: 'drop-shadow(0 0 30px rgba(124,58,237,0.3))' }} 
+          style={{ width: '100%', height: 'auto', transform: 'rotate(160deg)', filter: 'drop-shadow(0 0 30px rgba(13,148,136,0.3))' }} 
         />
       </motion.div>
 
@@ -368,7 +403,7 @@ function FloatingWalrus({ mousePos, isMobile }: { mousePos: { x: number, y: numb
         <motion.img 
           src="/walform-mascot.png" alt="Walrus Peek" animate={{ scaleY: [1, 1, 0.1, 1, 1] }}
           transition={{ duration: 0.2, repeat: Infinity, repeatDelay: 6 }}
-          style={{ width: '100%', height: 'auto', transform: 'rotate(25deg)', filter: 'drop-shadow(0 0 40px rgba(124,58,237,0.5))' }} 
+          style={{ width: '100%', height: 'auto', transform: 'rotate(25deg)', filter: 'drop-shadow(0 0 40px rgba(13,148,136,0.5))' }} 
         />
       </motion.div>
     </>
@@ -423,7 +458,8 @@ export default function Home() {
     return () => window.removeEventListener('mousemove', handleMouseMove);
   }, []);
 
-  const enabledFields = config.fields.filter(f => f.enabled && f.id !== 'newsletter');
+  const attachedIds = new Set(config.fields.filter(f => f.attachedCheckbox).map(f => f.attachedCheckbox!.id));
+  const enabledFields = config.fields.filter(f => f.enabled && !attachedIds.has(f.id));
 
   function handleNext() {
     // If we are at intro or field steps, check validation for current field
@@ -1428,34 +1464,18 @@ export default function Home() {
                             onFile={file=>handleFile(f.id,file)} 
                             uploading={!!fileUploading[f.id]} 
                             progressMsg={fileUploadMsg[f.id]}
+                            allData={data}
+                            onDataChange={setField}
                           />
                           
-                          {f.id === 'leader_email' && (() => {
-                            const newsletterField = config.fields.find(field => field.id === 'newsletter' && field.enabled);
-                            if (newsletterField) {
-                              return (
-                                <div style={{ marginTop: '24px', paddingTop: '24px', borderTop: '1px solid var(--border)' }}>
-                                  <FieldInput 
-                                    field={newsletterField} 
-                                    value={data[newsletterField.id]??false} 
-                                    onChange={v=>setField(newsletterField.id,v)} 
-                                    onFile={async ()=>{}} 
-                                    uploading={false}
-                                  />
-                                </div>
-                              );
-                            }
-                            return null;
-                          })()}
-
                           {errors[f.id] && (
                             <motion.p initial={{opacity:0,y:-10}} animate={{opacity:1,y:0}} style={{ fontSize:'14px', color:'#f87171', marginTop:'12px', fontWeight: 500 }}>
                               ⚠ {errors[f.id]}
                             </motion.p>
                           )}
                         </div>
-
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginTop: '16px' }}>
+                        
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginTop: '48px' }}>
                           <button className="btn btn-primary" onClick={handleNext} style={{ padding: '12px 32px' }}>
                             Next
                           </button>

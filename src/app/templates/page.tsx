@@ -20,7 +20,7 @@ const TEMPLATES: Template[] = [
   {
     id: 'walrus-sessions',
     category: 'Events',
-    categoryColor: '#fbbf24',
+    categoryColor: '#0d9488',
     time: '2 min',
     featured: true,
     title: 'Walrus Sessions',
@@ -43,7 +43,6 @@ const TEMPLATES: Template[] = [
         { id: 'session_select',    label: 'Session Selection*', type: 'checkbox', required: true, enabled: true },
         { id: 'leader_name',       label: 'Team Leader Name*', type: 'text', required: true, enabled: true, placeholder: 'Full name' },
         { id: 'leader_email',      label: 'Team Leader Email*', type: 'email', required: true, enabled: true, placeholder: 'email@example.com' },
-        { id: 'newsletter',        label: 'I would be open to receiving your newsletter', type: 'checkbox', required: false, enabled: true, attachedCheckbox: true },
         { id: 'leader_telegram',   label: 'Team Leader Telegram Handle', type: 'text', required: false, enabled: true, placeholder: '@username' },
         { id: 'discord_handle',    label: 'Discord Handle*', type: 'text', required: true, enabled: true, placeholder: 'username', helpText: 'Make sure to join our discord — it is required and how we contact you.', linkText: 'Join Discord', linkUrl: 'https://discord.gg/walrusprotocol' },
         { id: 'deepsurge_link',    label: 'DeepSurge Project Link*', type: 'url', required: true, enabled: true, placeholder: 'https://', helpText: 'Needs to be on mainnet' },
@@ -66,7 +65,7 @@ const TEMPLATES: Template[] = [
   {
     id: 'bug-report',
     category: 'Engineering',
-    categoryColor: '#ef4444',
+    categoryColor: '#0d9488',
     time: '4 min',
     featured: true,
     title: 'Bug Report',
@@ -98,7 +97,7 @@ const TEMPLATES: Template[] = [
   {
     id: 'feature-request',
     category: 'Product',
-    categoryColor: '#34d399',
+    categoryColor: '#0d9488',
     time: '3 min',
     title: 'Feature Request',
     description: 'Collect and prioritize product ideas, use cases, and mockups from your users.',
@@ -129,7 +128,7 @@ const TEMPLATES: Template[] = [
   {
     id: 'grant-application',
     category: 'Funding',
-    categoryColor: '#3b82f6',
+    categoryColor: '#0d9488',
     time: '10 min',
     featured: true,
     title: 'Grant / Application Form',
@@ -165,7 +164,7 @@ const TEMPLATES: Template[] = [
   {
     id: 'hackathon-submission',
     category: 'Events',
-    categoryColor: '#fbbf24',
+    categoryColor: '#0d9488',
     time: '5 min',
     featured: true,
     title: 'Hackathon Submission',
@@ -199,7 +198,7 @@ const TEMPLATES: Template[] = [
   {
     id: 'community-feedback',
     category: 'Community',
-    categoryColor: '#a78bfa',
+    categoryColor: '#0d9488', // Changed from purple to teal
     time: '3 min',
     title: 'Community Feedback',
     description: 'Gather actionable feedback from your community on sessions and events.',
@@ -228,7 +227,7 @@ const TEMPLATES: Template[] = [
   {
     id: 'beta-tester',
     category: 'Growth',
-    categoryColor: '#f472b6',
+    categoryColor: '#0d9488',
     time: '2 min',
     title: 'Beta Tester Signup',
     description: 'Recruit beta testers, log their devices, and track their interest areas.',
@@ -257,7 +256,7 @@ const TEMPLATES: Template[] = [
   {
     id: 'job-application',
     category: 'HR',
-    categoryColor: '#2dd4bf',
+    categoryColor: '#0d9488',
     time: '6 min',
     title: 'Job / Contributor Application',
     description: 'Accept applications for roles and bounties directly into your decentralized inbox.',
@@ -288,7 +287,7 @@ const TEMPLATES: Template[] = [
   {
     id: 'dao-governance',
     category: 'Governance',
-    categoryColor: '#818cf8',
+    categoryColor: '#0d9488', // Changed from purple to teal
     time: '4 min',
     title: 'DAO Governance Feedback',
     description: 'Collect structured sentiment on DAO proposals before they go on-chain.',
@@ -315,7 +314,7 @@ const TEMPLATES: Template[] = [
   {
     id: 'creator-submission',
     category: 'Creative',
-    categoryColor: '#fb923c',
+    categoryColor: '#0d9488',
     time: '3 min',
     title: 'Creator Submission',
     description: 'Receive art, videos, and creative assets directly with licensing details.',
@@ -342,7 +341,7 @@ const TEMPLATES: Template[] = [
   {
     id: 'investor-intake',
     category: 'Business',
-    categoryColor: '#94a3b8',
+    categoryColor: '#0d9488',
     time: '5 min',
     title: 'Investor / Partnership Intake',
     description: 'Streamline incoming requests from potential partners and investors.',
@@ -436,10 +435,11 @@ export default function TemplatesPage() {
                 display: 'flex', 
                 flexDirection: 'column',
                 height: '100%',
-                border: tmpl.featured ? '1px solid var(--accent-soft)' : '1px solid var(--border)',
-                background: tmpl.featured ? 'linear-gradient(180deg, rgba(13, 148, 136, 0.05) 0%, rgba(255,255,255,0.02) 100%)' : 'linear-gradient(180deg, rgba(13, 148, 136, 0.03) 0%, rgba(255,255,255,0.01) 100%)',
+                border: '1px solid var(--border)',
+                background: 'linear-gradient(180deg, rgba(13, 148, 136, 0.05) 0%, rgba(9, 16, 24, 0.95) 100%)',
                 position: 'relative',
-                overflow: 'hidden'
+                overflow: 'hidden',
+                borderRadius: '24px'
               }}
             >
               <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', width: '80%', height: '100%', background: tmpl.featured ? 'radial-gradient(ellipse at top, rgba(13, 148, 136, 0.2), transparent 60%)' : 'radial-gradient(ellipse at top, rgba(13, 148, 136, 0.1), transparent 60%)', pointerEvents: 'none' }} />
@@ -450,9 +450,9 @@ export default function TemplatesPage() {
                     <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-3)', padding: '4px 0' }}>{tmpl.time}</span>
                   </div>
                   {tmpl.featured && (
-                    <div className="glow-sm" style={{ 
+                    <div className="glow-teal-sm" style={{ 
                       fontSize: 10, fontWeight: 900, padding: '4px 10px', borderRadius: 8, 
-                      background: 'rgba(251,191,36,0.15)', border: '1px solid rgba(251,191,36,0.3)', color: '#fbbf24',
+                      background: 'rgba(13,148,136,0.15)', border: '1px solid rgba(13,148,136,0.3)', color: 'var(--accent-2)',
                       textTransform: 'uppercase'
                     }}>
                       Featured
@@ -479,7 +479,7 @@ export default function TemplatesPage() {
                       gridColumn: 'span 2', textAlign: 'center', fontSize: 11, fontWeight: 700, 
                       color: 'var(--text-3)', padding: '6px', background: 'rgba(255,255,255,0.01)', borderRadius: 8 
                     }}>
-                      + {tmpl.fields.length - 4} more fields
+                      + {tmpl.fieldCount - 4} more fields
                     </div>
                   )}
                 </div>
@@ -492,9 +492,10 @@ export default function TemplatesPage() {
                 onClick={() => useTemplate(tmpl)}
                 style={{ 
                   width: '100%', justifyContent: 'center', height: 48, fontSize: 14, fontWeight: 800,
-                  boxShadow: tmpl.featured ? '0 4px 20px rgba(139, 92, 246, 0.4)' : 'none',
-                  background: tmpl.featured ? 'linear-gradient(135deg, #8b5cf6, #d946ef)' : undefined,
+                  boxShadow: tmpl.featured ? '0 4px 20px rgba(13, 148, 136, 0.4)' : 'none',
+                  background: tmpl.featured ? 'linear-gradient(135deg, #0d9488, #2dd4bf)' : undefined,
                   border: tmpl.featured ? 'none' : undefined,
+                  borderRadius: '12px'
                 }}
               >
                 Use this Blueprint

@@ -39,34 +39,66 @@ function FieldSettingsEditor({ field, updateField }: { field: SessionField, upda
       initial={{ opacity: 0, x: 10 }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: -10 }}
-      style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}
+      style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}
     >
       <div>
-        <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-2)', display: 'block', marginBottom: '6px' }}>Field Label</label>
-        <input className="input" value={field.label} onChange={e => updateField(field.id, { label: e.target.value })} style={{ fontSize: '13px' }} />
+        <label style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-2)', display: 'block', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Field Label</label>
+        <input className="input" value={field.label} onChange={e => updateField(field.id, { label: e.target.value })} style={{ fontSize: '14px', padding: '12px 16px' }} />
       </div>
       
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', border: '1px solid var(--border)' }}>
-        <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-1)' }}>Required Field</label>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', border: '1px solid var(--border)' }}>
+        <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-1)' }}>Required Field</label>
         <input type="checkbox" className="toggle" checked={field.required} onChange={e => updateField(field.id, { required: e.target.checked })} />
       </div>
 
       <div>
-        <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-2)', display: 'block', marginBottom: '6px' }}>Placeholder Text</label>
-        <input className="input" placeholder="e.g. Enter value..." value={field.placeholder || ''} onChange={e => updateField(field.id, { placeholder: e.target.value })} style={{ fontSize: '13px' }} />
+        <label style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-2)', display: 'block', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Placeholder Text</label>
+        <input className="input" placeholder="e.g. Enter value..." value={field.placeholder || ''} onChange={e => updateField(field.id, { placeholder: e.target.value })} style={{ fontSize: '14px', padding: '12px 16px' }} />
       </div>
 
       <div>
-        <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-2)', display: 'block', marginBottom: '6px' }}>Help Text</label>
-        <input className="input" placeholder="Optional instructions..." value={field.helpText || ''} onChange={e => updateField(field.id, { helpText: e.target.value })} style={{ fontSize: '13px' }} />
+        <label style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-2)', display: 'block', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Help Text</label>
+        <input className="input" placeholder="Optional instructions..." value={field.helpText || ''} onChange={e => updateField(field.id, { helpText: e.target.value })} style={{ fontSize: '14px', padding: '12px 16px' }} />
       </div>
+
+      {['text', 'email', 'url', 'textarea'].includes(field.type) && (
+        <div style={{ padding: '16px', background: 'rgba(13,148,136,0.05)', borderRadius: '16px', border: '1px solid rgba(13,148,136,0.2)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+            <label style={{ fontSize: '13px', fontWeight: 700, color: 'var(--accent-2)' }}>Attached Checkbox</label>
+            <input 
+              type="checkbox" 
+              className="toggle" 
+              checked={!!field.attachedCheckbox} 
+              onChange={e => {
+                if (e.target.checked) {
+                  updateField(field.id, { attachedCheckbox: { id: `checkbox_${field.id}`, label: '' } });
+                } else {
+                  updateField(field.id, { attachedCheckbox: undefined });
+                }
+              }} 
+            />
+          </div>
+          {field.attachedCheckbox && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <input 
+                className="input" 
+                placeholder="Checkbox Label" 
+                value={field.attachedCheckbox.label} 
+                onChange={e => updateField(field.id, { attachedCheckbox: { ...field.attachedCheckbox!, label: e.target.value } })}
+                style={{ fontSize: '13px', background: 'rgba(0,0,0,0.2)' }}
+              />
+              <p style={{ fontSize: '11px', color: 'var(--text-3)' }}>ID: <span className="mono">{field.attachedCheckbox.id}</span></p>
+            </div>
+          )}
+        </div>
+      )}
 
       {(field.type === 'select' || field.type === 'checkbox') && (
         <div>
-          <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-2)', display: 'block', marginBottom: '6px' }}>Options (comma separated)</label>
+          <label style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-2)', display: 'block', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Options (comma separated)</label>
           <textarea 
             className="textarea" 
-            style={{ fontSize: '13px', minHeight: '80px' }}
+            style={{ fontSize: '14px', minHeight: '100px', padding: '12px 16px' }}
             value={optionsText} 
             onChange={e => {
               const val = e.target.value;
@@ -95,6 +127,16 @@ export function FormBuilderTab({ config, onChange, ownerAddress }: {
   const [copied, setCopied]         = useState(false);
 
   const [activeFieldId, setActiveFieldId] = useState<string | null>(null);
+  const [dragIdx, setDragIdx] = useState<number | null>(null);
+  const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
+
+  function reorderFields(fromIdx: number, toIdx: number) {
+    if (fromIdx === toIdx) return;
+    const newFields = [...config.fields];
+    const [moved] = newFields.splice(fromIdx, 1);
+    newFields.splice(toIdx, 0, moved);
+    onChange({ ...config, fields: newFields });
+  }
 
   function updateField(id: string, patch: Partial<SessionField>) {
     onChange({ ...config, fields: config.fields.map(f => f.id === id ? { ...f, ...patch } : f) });
@@ -115,6 +157,14 @@ export function FormBuilderTab({ config, onChange, ownerAddress }: {
     onChange({ ...config, fields: [...config.fields, f] });
     setActiveFieldId(f.id);
   }
+  
+  const moveField = (index: number, direction: 'up' | 'down') => {
+    const newFields = [...config.fields];
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= newFields.length) return;
+    [newFields[index], newFields[targetIndex]] = [newFields[targetIndex], newFields[index]];
+    onChange({ ...config, fields: newFields });
+  };
 
   const connection = useWalletConnection();
 
@@ -226,31 +276,31 @@ export function FormBuilderTab({ config, onChange, ownerAddress }: {
     <div style={{
       display: 'grid',
       gridTemplateColumns: 'repeat(12, 1fr)',
-      gap: '24px',
+      gap: '20px',
       alignItems: 'start',
-      minHeight: '600px'
+      maxWidth: '1280px',
+      margin: '0 auto'
     }}>
       {/* LEFT COLUMN: Elements (approx 20%) */}
-      <div style={{ gridColumn: 'span 3', position: 'sticky', top: '24px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
-        <div style={{ padding: '16px', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border)', borderRadius: '16px', backdropFilter: 'blur(10px)' }}>
-          <h3 style={{ fontSize: '11px', fontWeight: 800, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '16px' }}>
+      <div style={{ gridColumn: 'span 3', position: 'sticky', top: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <div style={{ padding: '16px', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border)', borderRadius: '20px', backdropFilter: 'blur(20px)', boxShadow: '0 8px 32px rgba(0,0,0,0.2)' }}>
+          <h3 style={{ fontSize: '11px', fontWeight: 800, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '12px', textAlign: 'center' }}>
             Form Elements
           </h3>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '8px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '6px' }}>
             {FIELD_TYPES.map(type => (
               <motion.button
                 key={type.value}
-                whileHover={{ scale: 1.02, backgroundColor: 'rgba(13, 148, 136, 0.08)', borderColor: 'rgba(13, 148, 136, 0.3)' }}
+                whileHover={{ scale: 1.02, backgroundColor: 'rgba(13, 148, 136, 0.12)', borderColor: 'rgba(13, 148, 136, 0.4)' }}
                 whileTap={{ scale: 0.98 }}
                 onClick={() => addField(type.value)}
                 style={{
-                  display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 12px',
-                  background: 'rgba(255,255,255,0.01)', border: '1px solid var(--border)', borderRadius: '10px',
+                  display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px',
+                  background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border)', borderRadius: '10px',
                   color: 'var(--text-2)', fontSize: '13px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s',
-                  boxShadow: '0 2px 10px rgba(0,0,0,0.1)'
                 }}
               >
-                <div style={{ width: '24px', height: '24px', borderRadius: '6px', background: `${FIELD_TYPE_COLORS[type.value]}20`, color: FIELD_TYPE_COLORS[type.value], display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px' }}>
+                <div style={{ width: '26px', height: '26px', borderRadius: '8px', background: `${FIELD_TYPE_COLORS[type.value]}20`, color: FIELD_TYPE_COLORS[type.value], display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', flexShrink: 0 }}>
                   {type.icon}
                 </div>
                 {type.label}
@@ -261,28 +311,42 @@ export function FormBuilderTab({ config, onChange, ownerAddress }: {
       </div>
 
       {/* CENTER COLUMN: Main Builder Area (approx 55%) */}
-      <div style={{ gridColumn: 'span 6', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-        <div style={{ marginBottom: '12px' }}>
+      <div style={{ 
+        gridColumn: 'span 6', 
+        height: 'calc(100vh - 240px)', 
+        overflowY: 'auto', 
+        padding: '20px 16px 40px 16px', 
+        background: 'rgba(5, 10, 18, 0.4)',
+        borderRadius: '24px',
+        border: '1px solid var(--border)',
+        boxShadow: 'inset 0 4px 20px rgba(0,0,0,0.2)',
+        scrollbarWidth: 'thin',
+        scrollbarColor: 'var(--accent) transparent'
+      }}>
+        <div style={{ marginBottom: '40px', padding: '0 8px' }}>
           <input 
             className="input-minimal"
             value={config.title}
             onChange={e => onChange({ ...config, title: e.target.value })}
-            placeholder="Form Title"
-            style={{ fontSize: '28px', fontWeight: 900, color: 'var(--text-1)', padding: 0, height: 'auto', background: 'transparent', border: 'none', outline: 'none', width: '100%' }}
+            placeholder="Untitled Form"
+            style={{ fontSize: '28px', fontWeight: 900, color: 'var(--text-1)', padding: 0, height: 'auto', background: 'transparent', border: 'none', outline: 'none', width: '100%', letterSpacing: '-0.02em' }}
           />
-          <input 
+          <textarea 
             className="input-minimal"
             value={config.description}
             onChange={e => onChange({ ...config, description: e.target.value })}
-            placeholder="Form description..."
-            style={{ fontSize: '14px', color: 'var(--text-3)', padding: 0, height: 'auto', background: 'transparent', border: 'none', outline: 'none', width: '100%', marginTop: '8px' }}
+            placeholder="Add a description for your form..."
+            rows={1}
+            style={{ fontSize: '15px', color: 'var(--text-3)', padding: 0, height: 'auto', background: 'transparent', border: 'none', outline: 'none', width: '100%', marginTop: '12px', resize: 'none', lineHeight: 1.5 }}
           />
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           <AnimatePresence>
-            {config.fields.map(f => {
+            {config.fields.map((f, idx) => {
               const isActive = activeFieldId === f.id;
+              const isDragging = dragIdx === idx;
+              const isDropTarget = dragOverIdx === idx && dragIdx !== null && dragIdx !== idx;
               return (
                 <motion.div
                   key={f.id}
@@ -290,107 +354,118 @@ export function FormBuilderTab({ config, onChange, ownerAddress }: {
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.95 }}
+                  draggable
+                  onDragStart={(e) => {
+                    setDragIdx(idx);
+                    (e as any).dataTransfer.effectAllowed = 'move';
+                  }}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    (e as any).dataTransfer.dropEffect = 'move';
+                    setDragOverIdx(idx);
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    if (dragIdx !== null) reorderFields(dragIdx, idx);
+                    setDragIdx(null);
+                    setDragOverIdx(null);
+                  }}
+                  onDragEnd={() => { setDragIdx(null); setDragOverIdx(null); }}
                   onClick={() => setActiveFieldId(f.id)}
-                  whileHover={{ borderColor: isActive ? 'var(--accent-soft)' : 'rgba(255,255,255,0.15)' }}
                   style={{
-                    padding: '16px',
-                    borderRadius: '16px',
-                    background: isActive ? 'rgba(13, 148, 136, 0.04)' : 'rgba(255,255,255,0.02)',
-                    border: `1px solid ${isActive ? 'var(--accent-soft)' : 'var(--border)'}`,
+                    padding: '10px 14px',
+                    borderRadius: '14px',
+                    background: isDragging ? 'rgba(13, 148, 136, 0.04)' : isActive ? 'rgba(13, 148, 136, 0.08)' : 'rgba(255,255,255,0.02)',
+                    border: `2px solid ${isDropTarget ? 'var(--accent)' : isActive ? 'var(--accent)' : isDragging ? 'rgba(13,148,136,0.3)' : 'var(--border)'}`,
                     cursor: 'pointer',
-                    boxShadow: isActive ? '0 8px 30px rgba(0,0,0,0.2), inset 0 1px 1px rgba(255,255,255,0.05)' : 'none',
+                    boxShadow: isDropTarget ? '0 0 0 2px rgba(13,148,136,0.3)' : isActive ? '0 8px 32px rgba(0,0,0,0.4), inset 0 1px 1px rgba(255,255,255,0.05)' : 'none',
                     position: 'relative',
-                    overflow: 'hidden'
+                    transition: 'border-color 0.15s, background-color 0.15s, opacity 0.15s',
+                    opacity: isDragging ? 0.5 : 1,
+                    marginBottom: '6px',
+                    userSelect: 'none'
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: `${FIELD_TYPE_COLORS[f.type]}15`, border: `1px solid ${FIELD_TYPE_COLORS[f.type]}30`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: FIELD_TYPE_COLORS[f.type], fontWeight: 800, fontSize: '12px' }}>
-                        {FIELD_TYPES.find(t => t.value === f.type)?.icon}
-                      </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                        <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-1)' }}>{f.label || 'Untitled Field'}</div>
-                        <div style={{ fontSize: '11px', color: 'var(--text-3)', display: 'flex', gap: '8px', alignItems: 'center' }}>
-                          <span style={{ textTransform: 'capitalize' }}>{f.type}</span>
-                          {f.required && <span style={{ color: '#f87171', background: 'rgba(239, 68, 68, 0.1)', padding: '2px 6px', borderRadius: '4px', fontSize: '9px', fontWeight: 700 }}>REQUIRED</span>}
-                        </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', width: '100%' }}>
+                    {/* Drag Handle */}
+                    <div
+                      title="Drag to reorder"
+                      style={{
+                        cursor: 'grab', color: 'var(--text-3)', flexShrink: 0,
+                        display: 'flex', alignItems: 'center', padding: '4px 2px',
+                        borderRadius: '6px', transition: 'color 0.15s',
+                        fontSize: '16px', lineHeight: 1, letterSpacing: '0.05em'
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.color = 'var(--accent-2)'}
+                      onMouseLeave={e => e.currentTarget.style.color = 'var(--text-3)'}
+                    >
+                      ⠿
+                    </div>
+                    
+                    {/* Icon */}
+                    <div style={{ width: '32px', height: '32px', borderRadius: '10px', background: `${FIELD_TYPE_COLORS[f.type]}15`, border: `1px solid ${FIELD_TYPE_COLORS[f.type]}30`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: FIELD_TYPE_COLORS[f.type], fontSize: '15px', flexShrink: 0 }}>
+                      {FIELD_TYPES.find(t => t.value === f.type)?.icon}
+                    </div>
+                    
+                    {/* Content */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-1)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{f.label || 'Untitled Field'}</div>
+                      <div style={{ fontSize: '11px', color: 'var(--text-3)', display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
+                        <span style={{ textTransform: 'capitalize', fontWeight: 500 }}>{f.type}</span>
+                        {f.required && <span style={{ color: '#f87171', background: 'rgba(239, 68, 68, 0.1)', padding: '1px 5px', borderRadius: '4px', fontSize: '9px', fontWeight: 800, letterSpacing: '0.04em' }}>REQUIRED</span>}
+                        {f.attachedCheckbox && <span style={{ color: 'var(--accent-2)', background: 'rgba(13,148,136,0.1)', padding: '1px 5px', borderRadius: '4px', fontSize: '9px', fontWeight: 800 }}>+CB</span>}
                       </div>
                     </div>
-
-                    <div style={{ opacity: isActive ? 1 : 0.4, transition: 'opacity 0.2s', display: 'flex', gap: '8px' }}>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); removeField(f.id); }}
-                        style={{
-                          width: '30px', height: '30px', borderRadius: '8px', background: 'transparent', border: 'none',
-                          color: 'var(--text-3)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.2s'
-                        }}
-                        onMouseEnter={e => e.currentTarget.style.color = '#ef4444'}
-                        onMouseLeave={e => e.currentTarget.style.color = 'var(--text-3)'}
-                      >
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
-                      </button>
-                    </div>
+                    
+                    {/* Delete */}
+                    <button
+                      onClick={(e) => { e.stopPropagation(); removeField(f.id); }}
+                      style={{
+                        width: '28px', height: '28px', borderRadius: '8px', background: 'transparent', border: 'none',
+                        color: 'var(--text-3)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.2s', flexShrink: 0
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.color = '#ef4444'; e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)'; }}
+                      onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-3)'; e.currentTarget.style.background = 'transparent'; }}
+                      title="Delete Field"
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                    </button>
                   </div>
                   {/* Glassmorphism ambient glow if active */}
-                  {isActive && <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', width: '60%', height: '100%', background: 'radial-gradient(ellipse at top, rgba(13, 148, 136, 0.15), transparent 70%)', pointerEvents: 'none' }} />}
+                  {isActive && <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', width: '70%', height: '100%', background: 'radial-gradient(ellipse at top, rgba(13, 148, 136, 0.12), transparent 70%)', pointerEvents: 'none' }} />}
                 </motion.div>
               );
             })}
           </AnimatePresence>
           {config.fields.length === 0 && (
-            <div style={{ padding: '40px', textAlign: 'center', border: '1px dashed var(--border)', borderRadius: '16px', color: 'var(--text-3)' }}>
-              <div style={{ fontSize: '24px', marginBottom: '8px' }}>✨</div>
-              <p style={{ fontSize: '13px' }}>Click an element on the left to add it to your form.</p>
+            <div style={{ padding: '80px 40px', textAlign: 'center', border: '2px dashed var(--border)', borderRadius: '32px', color: 'var(--text-3)', background: 'rgba(255,255,255,0.01)' }}>
+              <div style={{ fontSize: '48px', marginBottom: '20px' }}>✨</div>
+              <h4 style={{ color: 'var(--text-2)', fontWeight: 700, fontSize: '20px', marginBottom: '12px' }}>Empty Canvas</h4>
+              <p style={{ fontSize: '16px', maxWidth: '340px', margin: '0 auto', lineHeight: 1.6 }}>Choose an element from the left panel to start building your form.</p>
             </div>
           )}
         </div>
       </div>
 
-      {/* RIGHT COLUMN: Settings & Publish (approx 25%) */}
-      <div style={{ gridColumn: 'span 3', position: 'sticky', top: '24px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+      {/* RIGHT COLUMN: Settings & Publish — always-visible fixed layout */}
+      <div style={{ 
+        gridColumn: 'span 3', 
+        position: 'sticky', 
+        top: '24px', 
+        height: 'calc(100vh - 160px)',
+        display: 'flex', 
+        flexDirection: 'column', 
+        gap: '0',
+        background: 'rgba(255,255,255,0.02)', 
+        border: '1px solid var(--border)', 
+        borderRadius: '24px', 
+        backdropFilter: 'blur(20px)',
+        overflow: 'hidden'
+      }}>
         
-        {/* Publish Action Card */}
-        <div style={{ padding: '20px', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border)', borderRadius: '16px', backdropFilter: 'blur(10px)', boxShadow: '0 10px 40px rgba(0,0,0,0.2)' }}>
-          <h3 style={{ fontSize: '11px', fontWeight: 800, color: 'var(--accent-2)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '16px' }}>
-            Finalize & Publish
-          </h3>
-          
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px', background: 'rgba(13,148,136,0.05)', borderRadius: '10px', border: '1px solid rgba(13,148,136,0.1)', marginBottom: '16px' }}>
-            <div>
-              <p style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-1)' }}>Seal Encryption</p>
-              <p style={{ fontSize: '10px', color: 'var(--text-3)' }}>E2E security for responses.</p>
-            </div>
-            <input type="checkbox" className="toggle" checked={!!config.encryptionEnabled} onChange={e => onChange({ ...config, encryptionEnabled: e.target.checked })} />
-          </div>
-
-          <motion.button 
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            className="btn btn-primary" 
-            style={{ width: '100%', height: '44px', fontSize: '13px', fontWeight: 800, boxShadow: '0 4px 15px rgba(13, 148, 136, 0.4)' }} 
-            onClick={publish} 
-            disabled={publishing}
-          >
-            {publishing ? <><span className="spinner" style={{width:16,height:16}} /> Publishing...</> : '🚀 Publish Form'}
-          </motion.button>
-
-          {pubUrl && (
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} style={{ marginTop: '16px', padding: '12px', background: 'rgba(74,222,128,0.05)', border: '1px solid rgba(74,222,128,0.2)', borderRadius: '12px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                <span style={{ fontSize: '12px' }}>✅</span>
-                <span style={{ fontSize: '11px', fontWeight: 700, color: '#4ade80' }}>Live on Sui</span>
-              </div>
-              <div style={{ display: 'flex', gap: '6px' }}>
-                <div style={{ flex: 1, background: 'rgba(0,0,0,0.2)', padding: '6px 8px', borderRadius: '6px', fontSize: '10px', color: 'var(--accent-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{pubUrl}</div>
-                <button className="btn btn-secondary btn-sm" onClick={copy} style={{ height: '24px', fontSize: '9px', padding: '0 8px' }}>{copied ? '✓' : 'Copy'}</button>
-              </div>
-            </motion.div>
-          )}
-        </div>
-
-        {/* Field Settings Card */}
-        <div style={{ padding: '20px', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border)', borderRadius: '16px', backdropFilter: 'blur(10px)', minHeight: '300px' }}>
-          <h3 style={{ fontSize: '11px', fontWeight: 800, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '16px' }}>
+        {/* Field Settings — scrollable, takes available space */}
+        <div style={{ flex: 1, overflowY: 'auto', padding: '16px', scrollbarWidth: 'thin', scrollbarColor: 'var(--accent) transparent' }}>
+          <h3 style={{ fontSize: '11px', fontWeight: 800, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '14px', textAlign: 'center', flexShrink: 0 }}>
             Field Settings
           </h3>
           
@@ -403,13 +478,42 @@ export function FormBuilderTab({ config, onChange, ownerAddress }: {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                style={{ textAlign: 'center', color: 'var(--text-3)', padding: '20px 0' }}
+                style={{ textAlign: 'center', color: 'var(--text-3)', padding: '40px 0' }}
               >
-                <div style={{ fontSize: '20px', marginBottom: '8px' }}>⚙️</div>
-                <p style={{ fontSize: '12px' }}>Select a field from the canvas to edit its properties.</p>
+                <div style={{ fontSize: '32px', marginBottom: '12px' }}>⚙️</div>
+                <p style={{ fontSize: '13px', maxWidth: '180px', margin: '0 auto', lineHeight: 1.5 }}>Select a field to edit its settings.</p>
               </motion.div>
             )}
           </AnimatePresence>
+        </div>
+
+        {/* Publish Action — fixed at bottom, always visible */}
+        <div style={{ flexShrink: 0, padding: '12px 16px', background: 'rgba(5,10,18,0.85)', borderTop: '1px solid var(--border)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+            <span style={{ fontSize: '11px', fontWeight: 800, color: 'var(--accent-2)', textTransform: 'uppercase', letterSpacing: '0.08em', flex: 1 }}>🚀 Finalize &amp; Publish</span>
+            <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-3)', cursor: 'help' }} title="Enable End-to-End Encryption for all responses">🔒 Encrypt (Seal)</label>
+            <input type="checkbox" className="toggle" checked={!!config.encryptionEnabled} onChange={e => onChange({ ...config, encryptionEnabled: e.target.checked })} title="Enable End-to-End Encryption" />
+          </div>
+
+          <motion.button 
+            whileHover={{ scale: 1.02, boxShadow: '0 8px 25px rgba(13, 148, 136, 0.5)' }}
+            whileTap={{ scale: 0.98 }}
+            className="btn btn-primary" 
+            style={{ width: '100%', height: '44px', fontSize: '14px', fontWeight: 800, borderRadius: '12px' }} 
+            onClick={publish} 
+            disabled={publishing}
+          >
+            {publishing ? <><span className="spinner" style={{width:16,height:16}} /> Publishing...</> : '🚀 Publish Form'}
+          </motion.button>
+
+          {pubUrl && (
+            <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} style={{ marginTop: '10px', padding: '10px 14px', background: 'rgba(13,148,136,0.1)', border: '1px solid rgba(13,148,136,0.3)', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '14px' }}>✅</span>
+              <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--accent-2)', flex: 1 }}>Live on Sui</span>
+              <button className="btn btn-secondary btn-sm" onClick={copy} style={{ height: '28px', fontSize: '11px', padding: '0 10px', borderRadius: '8px' }}>{copied ? '✓' : 'Copy'}</button>
+              <a href={pubUrl} target="_blank" rel="noreferrer" className="btn btn-primary btn-sm" style={{ height: '28px', fontSize: '11px', padding: '0 10px', borderRadius: '8px' }}>Open ↗</a>
+            </motion.div>
+          )}
         </div>
       </div>
     </div>

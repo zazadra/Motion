@@ -53,11 +53,19 @@ function BuilderContent() {
   }
 
   return (
-    <div style={{ maxWidth: 1400, margin: '0 auto', padding: '40px 24px' }}>
+    <div style={{ maxWidth: 1600, margin: '0 auto', padding: '40px 24px' }}>
       <div style={{ marginBottom: 28 }}>
-        <h1 style={{ fontSize: 24, fontWeight: 900, letterSpacing: '-0.03em', marginBottom: 6 }}>Form Builder</h1>
+        <div style={{ 
+          display: 'inline-block', padding: '5px 12px', borderRadius: '10px',
+          background: 'var(--accent-soft)', color: 'var(--accent-2)',
+          fontSize: '11px', fontWeight: 800, textTransform: 'uppercase',
+          letterSpacing: '0.1em', marginBottom: 10
+        }}>Form Studio</div>
+        <h1 style={{ fontSize: 'clamp(1.6rem, 3vw, 2.2rem)', fontWeight: 900, letterSpacing: '-0.03em', marginBottom: 6, lineHeight: 1.15 }}>
+          Build Your <span className="text-glow-teal">Form</span>
+        </h1>
         <p style={{ fontSize: 14, color: 'var(--text-2)' }}>
-          Design your form, then publish it to Walrus. You'll get a shareable link using your Sui form object ID.
+          Design, configure, and publish your form to Walrus. Get a shareable link via your Sui object ID.
         </p>
       </div>
       <FormBuilderTab config={config} onChange={handleChange} ownerAddress={account.address} />

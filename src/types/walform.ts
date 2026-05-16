@@ -1,5 +1,5 @@
 export type SessionFieldType = 'text' | 'email' | 'url' | 'textarea' | 'checkbox' | 'select' | 'file' | 'rating';
-export type SubmissionStatus = 'pending' | 'approved' | 'rejected';
+export type SubmissionStatus = 'new' | 'reviewing' | 'done' | 'rejected' | 'pending' | 'approved';
 
 export interface SessionField {
   id: string;

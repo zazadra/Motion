@@ -150,7 +150,7 @@ function FieldInput({ field, value, onChange, onFile, uploading, uploadStep, wal
           />
 
           {!walletConnected ? (
-            <div style={{ padding: '12px 16px', background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.2)', borderRadius: 10, fontSize: 13, color: 'var(--text-2)', display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ padding: '12px 16px', background: 'rgba(13,148,136,0.08)', border: '1px solid rgba(13,148,136,0.2)', borderRadius: 10, fontSize: 13, color: 'var(--text-2)', display: 'flex', alignItems: 'center', gap: 10 }}>
               <span>🔒</span>
               <span>Connect your wallet to upload files to Walrus.</span>
             </div>
@@ -249,7 +249,7 @@ function FlowSidebar({ flow, receipt }: {
             <div key={step.key} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
               <div style={{
                 width: 24, height: 24, borderRadius: '50%',
-                background: flow[step.key] === 'done' ? 'rgba(16,185,129,0.1)' : flow[step.key] === 'uploading' ? 'rgba(139,92,246,0.1)' : 'rgba(255,255,255,0.04)',
+                background: flow[step.key] === 'done' ? 'rgba(16,185,129,0.1)' : flow[step.key] === 'uploading' ? 'rgba(13,148,136,0.1)' : 'rgba(255,255,255,0.04)',
                 border: `1.5px solid ${flow[step.key] === 'done' ? 'var(--success)' : flow[step.key] === 'uploading' ? 'var(--accent)' : 'var(--border)'}`,
                 display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: 'var(--text-3)', flexShrink: 0
               }}>
@@ -553,7 +553,7 @@ function FormPageContent() {
   );
 
   const attachedIds = new Set(config.fields.filter(f => f.attachedCheckbox).map(f => f.attachedCheckbox!.id));
-  const enabledFields = config.fields.filter(f => f.enabled && f.id !== 'newsletter' && !attachedIds.has(f.id));
+  const enabledFields = config.fields.filter(f => f.enabled && !attachedIds.has(f.id));
   const totalSteps = enabledFields.length;
   const progress = totalSteps > 0 ? ((currentStep) / totalSteps) * 100 : 0;
 
@@ -705,7 +705,7 @@ function FormPageContent() {
                   </div>
                 )}
                 {!account && isLast && (
-                  <div style={{ marginBottom: 16, padding: '14px 16px', background: 'rgba(139,92,246,0.06)', border: '1px solid rgba(139,92,246,0.18)', borderRadius: 12, display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div style={{ marginBottom: 16, padding: '14px 16px', background: 'rgba(13,148,136,0.06)', border: '1px solid rgba(13,148,136,0.18)', borderRadius: 12, display: 'flex', alignItems: 'center', gap: 12 }}>
                     <span style={{ fontSize: 13, color: 'var(--text-2)', flex: 1 }}>Connect wallet to submit</span>
                     <ConnectButton instance={dAppKit} />
                   </div>
