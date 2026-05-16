@@ -566,8 +566,9 @@ body::after {
 /* Mobile: ensure content clears the fixed header (≈64px tall on mobile) */
 @media (max-width: 768px) {
   .form-content-wrapper {
-    padding: 100px 20px 40px !important; /* Increased from 80px */
-    align-items: flex-start !important;
+    padding: 100px 20px 40px !important;
+    align-items: center !important;
+    justify-content: center !important;
   }
 }
 

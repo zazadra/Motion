@@ -651,7 +651,7 @@ function FormPageContent() {
       {/* Content wrapper — top padding clears the fixed header on all screen sizes */}
       <div 
         className="form-content-wrapper"
-        style={{ flex: 1, display: 'flex', position: 'relative' }}
+        style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}
       >
         {/* Floating mascot — desktop decoration only */}
         <div className="form-mascot-deco" aria-hidden>
