@@ -69,6 +69,7 @@ function SubmissionDetail({ sub, idx, config, onUpdateNote, onStatusChange, form
   setDecryptionSig: (sig: string | null) => void;
   decryptedPreloaded?: any;
   onDecrypted?: (id: string, data: any) => void;
+  onShowToast: (msg: string, type?: 'success' | 'error') => void;
 }) {
   const [activeTab, setActiveTab] = useState<'content' | 'meta'>('content');
   const [decryptedData, setDecryptedData] = useState<any>(null);
@@ -126,9 +127,17 @@ function SubmissionDetail({ sub, idx, config, onUpdateNote, onStatusChange, form
   return (
     <div className="card-premium" style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       {/* Header */}
-      <div style={{ padding: '24px 32px', borderBottom: '1px solid var(--border)', background: 'rgba(255,255,255,0.01)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
+      <div style={{ 
+        padding: useIsMobile() ? '72px 16px 24px' : '24px 32px', 
+        borderBottom: '1px solid var(--border)', 
+        background: 'rgba(255,255,255,0.01)', 
+        display: 'flex', 
+        justifyContent: 'space-between', 
+        alignItems: 'center', 
+        flexShrink: 0 
+      }}>
         <div>
-          <h2 style={{ fontSize: 20, fontWeight: 900, letterSpacing: '-0.02em' }}>Submission #{idx + 1}</h2>
+          <h2 style={{ fontSize: useIsMobile() ? 18 : 20, fontWeight: 900, letterSpacing: '-0.02em' }}>Submission #{idx + 1}</h2>
           <p className="mono" style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 4 }}>{sub.id}</p>
         </div>
         <div className="tab-pill">
@@ -278,7 +287,7 @@ export default function AdminDashboard() {
   const [openByIdLoading, setOpenByIdLoading] = useState(false);
   const [decryptionSig, setDecryptionSig] = useState<string | null>(null);
   const [decryptedDataMap, setDecryptedDataMap] = useState<Record<string, any>>({});
-  const [toast, setToast] = useState<{message: string, visible: boolean}>({ message: '', visible: false });
+  const [toast, setToast] = useState<{message: string, visible: boolean, type: 'success' | 'error'}>({ message: '', visible: false, type: 'success' });
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
   const isMobile = useIsMobile();
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
@@ -289,8 +298,8 @@ export default function AdminDashboard() {
     if (selectedSubId) setMobileView('detail');
   }, [selectedSubId]);
 
-  function showToast(msg: string) {
-    setToast({ message: msg, visible: true });
+  function showToast(msg: string, type: 'success' | 'error' = 'success') {
+    setToast({ message: msg, visible: true, type });
     setTimeout(() => setToast(prev => ({ ...prev, visible: false })), 3000);
   }
 
@@ -483,23 +492,26 @@ export default function AdminDashboard() {
       overflow: 'hidden',
       position: 'relative'
     }}>
-      {toast.visible && (
-        <motion.div 
-          initial={{ opacity: 0, y: 50, scale: 0.9 }} 
-          animate={{ opacity: 1, y: 0, scale: 1 }} 
-          exit={{ opacity: 0, y: 20, scale: 0.9 }}
-          style={{ 
-            position: 'fixed', bottom: 40, left: '50%', transform: 'translateX(-50%)', zIndex: 10000,
-            padding: '12px 24px', borderRadius: '16px', background: 'rgba(13, 148, 136, 0.95)', 
-            border: '1px solid rgba(255,255,255,0.2)', color: 'white',
-            display: 'flex', alignItems: 'center', gap: 12, boxShadow: '0 20px 40px rgba(0,0,0,0.4)',
-            backdropFilter: 'blur(10px)', fontWeight: 600
-          }}
-        >
-          <span style={{ fontSize: 18 }}>✅</span>
-          <span style={{ fontSize: 14 }}>{toast.message}</span>
-        </motion.div>
-      )}
+      <AnimatePresence>
+        {toast.visible && (
+          <motion.div 
+            initial={{ opacity: 0, y: 50, scale: 0.9, x: '-50%' }} 
+            animate={{ opacity: 1, y: 0, scale: 1, x: '-50%' }} 
+            exit={{ opacity: 0, y: 20, scale: 0.9, x: '-50%' }}
+            style={{ 
+              position: 'fixed', bottom: 40, left: '50%', zIndex: 10000,
+              padding: '12px 24px', borderRadius: '16px', 
+              background: toast.type === 'error' ? 'rgba(220, 38, 38, 0.95)' : 'rgba(13, 148, 136, 0.95)', 
+              border: '1px solid rgba(255,255,255,0.2)', color: 'white',
+              display: 'flex', alignItems: 'center', gap: 12, boxShadow: '0 20px 40px rgba(0,0,0,0.4)',
+              backdropFilter: 'blur(10px)', fontWeight: 600
+            }}
+          >
+            <span style={{ fontSize: 18 }}>{toast.type === 'error' ? '✕' : '✅'}</span>
+            <span style={{ fontSize: 14 }}>{toast.message}</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <aside style={{ 
         borderRight: '1px solid var(--border)', 
@@ -653,9 +665,10 @@ export default function AdminDashboard() {
             <button 
               onClick={() => { setMobileView('list'); setSelectedSubId(null); }} 
               style={{ 
-                position: 'absolute', top: 24, left: 24, zIndex: 10,
-                background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', 
-                borderRadius: 8, padding: '4px 12px', color: 'var(--text-1)', fontSize: 12, fontWeight: 700
+                position: 'absolute', top: 20, left: 16, zIndex: 20,
+                background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', 
+                borderRadius: '50px', padding: '6px 16px', color: 'var(--text-1)', fontSize: 12, fontWeight: 800,
+                backdropFilter: 'blur(8px)', boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
               }}
             >
               ← Back
@@ -674,6 +687,7 @@ export default function AdminDashboard() {
               setDecryptionSig={handleSetDecryptionSig} 
               decryptedPreloaded={decryptedDataMap[selectedSub.id]}
               onDecrypted={(id, data) => setDecryptedDataMap(prev => ({ ...prev, [id]: data }))}
+              onShowToast={showToast}
             />
           ) : (
             <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-4)' }}>Select a response to view details</div>

@@ -1528,11 +1528,22 @@ export default function Home() {
                     </div>
 
                     {errMsg && (
-                      <div className="alert-error" style={{ marginTop:'24px', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)', color: '#fca5a5', padding: '16px', borderRadius: '12px', fontSize: '14px', textAlign: 'left' }}>
-                        <div style={{ fontWeight: 700, marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <span>❌</span> Submission Error
+                      <div className="alert-error" style={{ 
+                        marginTop: '24px', 
+                        background: 'rgba(239, 68, 68, 0.1)', 
+                        border: '1px solid rgba(239, 68, 68, 0.2)', 
+                        padding: '20px', 
+                        borderRadius: '16px', 
+                        textAlign: 'left',
+                        backdropFilter: 'blur(10px)',
+                        animation: 'fadeUp 0.3s ease-out'
+                      }}>
+                        <div style={{ fontWeight: 800, marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '10px', color: '#fca5a5' }}>
+                          <span style={{ fontSize: 18 }}>⚠️</span> Submission failed
                         </div>
-                        {errMsg}
+                        <div style={{ fontSize: '13px', lineHeight: 1.5, color: 'var(--text-2)', opacity: 0.9 }}>
+                          {errMsg}
+                        </div>
                       </div>
                     )}
 

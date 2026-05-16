@@ -54,11 +54,12 @@ interface SubmissionsTabProps {
   formBlobId?: string;
   /** Callback to switch to form builder */
   onSelectForm?: (config: FormConfig) => void;
+  onShowToast?: (msg: string, type?: 'success' | 'error') => void;
 }
 
 type InternalTab = 'manager' | 'replies' | 'lookup';
 
-export function SubmissionsTab({ ownerAddress, formBlobId: initialFormBlobId, onSelectForm }: SubmissionsTabProps) {
+export function SubmissionsTab({ ownerAddress, formBlobId: initialFormBlobId, onSelectForm, onShowToast }: SubmissionsTabProps) {
   const [internalTab, setInternalTab] = useState<InternalTab>(initialFormBlobId ? 'replies' : 'manager');
   const [selectedFormId, setSelectedFormId] = useState<string | null>(initialFormBlobId && initialFormBlobId !== 'default' ? initialFormBlobId : null);
   const [selectedForm, setSelectedForm] = useState<FormConfig | null>(null);
@@ -188,7 +189,8 @@ export function SubmissionsTab({ ownerAddress, formBlobId: initialFormBlobId, on
       await uploadJsonToWalrus(updated, signer, 3);
     } catch {
       setSubs(prev => prev.map(s => s.id === sub.id ? sub : s));
-      alert('Failed to save status update. Please try again.');
+      if (onShowToast) onShowToast('Failed to save status update. Please try again.', 'error');
+      else alert('Failed to save status update. Please try again.');
     } finally {
       setUpdatingId(null);
     }

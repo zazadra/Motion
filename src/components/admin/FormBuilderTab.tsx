@@ -117,10 +117,11 @@ function FieldSettingsEditor({ field, updateField }: { field: SessionField, upda
 }
 
 // -- Main tab ----------------------------------------------------------
-export function FormBuilderTab({ config, onChange, ownerAddress }: {
+export function FormBuilderTab({ config, onChange, ownerAddress, onShowToast }: {
   config: FormConfig;
   onChange: (c: FormConfig) => void;
   ownerAddress: string;
+  onShowToast?: (msg: string, type?: 'success' | 'error') => void;
 }) {
   const [publishing, setPublishing] = useState(false);
   const [pubMsg, setPubMsg]         = useState('');
@@ -178,7 +179,8 @@ export function FormBuilderTab({ config, onChange, ownerAddress }: {
 
   async function publish() {
     if (!connection.isConnected) {
-      alert('Sui Wallet not found or disconnected. Please connect your wallet first.');
+      if (onShowToast) onShowToast('Wallet not connected. Please connect first.', 'error');
+      else alert('Sui Wallet not found or disconnected. Please connect your wallet first.');
       return;
     }
     setPublishing(true);
@@ -271,7 +273,8 @@ export function FormBuilderTab({ config, onChange, ownerAddress }: {
 
       setPubUrl(`${window.location.origin}/f/?formId=${suiObjectId}`);
     } catch (e) { 
-      alert('Publish failed: ' + (e as Error).message); 
+      if (onShowToast) onShowToast('Publish failed: ' + (e as Error).message, 'error');
+      else alert('Publish failed: ' + (e as Error).message); 
     }
     setPublishing(false);
   }

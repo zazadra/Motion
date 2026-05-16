@@ -685,25 +685,27 @@ function FormPageContent() {
 
                 {errors[field.id] && <p style={{ fontSize: 13, color: 'var(--error)', marginBottom: 16 }}>{errors[field.id]}</p>}
                 {errMsg && (
-                  <div className="alert-error" style={{ marginBottom: 16 }}>
-                    {errKind === 'insufficient_funds' && (
-                      <div style={{ marginBottom: 6, fontWeight: 700 }}>💰 Insufficient SUI/WAL balance</div>
-                    )}
-                    {errKind === 'user_rejected' && (
-                      <div style={{ marginBottom: 6, fontWeight: 700 }}>✕ Cancelled</div>
-                    )}
-                    {errKind === 'network_timeout' && (
-                      <div style={{ marginBottom: 6, fontWeight: 700 }}>⏱ Network Timeout</div>
-                    )}
-                    {errKind === 'publisher_error' && (
-                      <div style={{ marginBottom: 6, fontWeight: 700 }}>⚠️ Walrus Network Issue</div>
-                    )}
-                    <span>{errMsg}</span>
-                    {errKind === 'insufficient_funds' && (
-                      <div style={{ marginTop: 8, fontSize: 12, opacity: 0.8 }}>
-                        Top up your wallet with SUI and WAL, then try again.
+                  <div className="alert-error" style={{ 
+                    marginBottom: 20, 
+                    padding: '16px 20px', 
+                    borderRadius: 16, 
+                    background: 'rgba(239,68,68,0.1)', 
+                    border: '1px solid rgba(239,68,68,0.2)',
+                    backdropFilter: 'blur(10px)',
+                    animation: 'fadeUp 0.3s ease-out'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+                      <span style={{ fontSize: 20 }}>⚠️</span>
+                      <div>
+                        {errKind === 'insufficient_funds' && (
+                          <div style={{ marginBottom: 4, fontWeight: 900, color: '#fca5a5', fontSize: 14 }}>Insufficient Balance</div>
+                        )}
+                        {errKind === 'user_rejected' && (
+                          <div style={{ marginBottom: 4, fontWeight: 900, color: '#fca5a5', fontSize: 14 }}>Transaction Cancelled</div>
+                        )}
+                        <span style={{ fontSize: 13, lineHeight: 1.5, opacity: 0.9 }}>{errMsg}</span>
                       </div>
-                    )}
+                    </div>
                   </div>
                 )}
                 {!account && isLast && (
@@ -712,16 +714,58 @@ function FormPageContent() {
                     <ConnectButton instance={dAppKit} />
                   </div>
                 )}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div style={{ 
+                  display: 'flex', 
+                  flexDirection: (useIsMobile() && isLast) ? 'column-reverse' : 'row', 
+                  alignItems: (useIsMobile() && isLast) ? 'stretch' : 'center', 
+                  gap: 12 
+                }}>
+                  {currentStep > 0 && (
+                    <button 
+                      className="btn btn-secondary" 
+                      onClick={goBack} 
+                      style={{ 
+                        padding: '13px 24px', 
+                        fontSize: 15, 
+                        flexShrink: 0,
+                        opacity: 0.8
+                      }}
+                    >
+                      ← Back
+                    </button>
+                  )}
+                  
                   {isLast ? (
-                    <button className="btn btn-primary" onClick={handleSubmit} disabled={status === 'submitting' || !account} style={{ padding: '13px 28px', fontSize: 15 }}>
-                      {status === 'submitting' ? <><span className="spinner" />Submitting…</> : '🛡️ Submit'}
+                    <button 
+                      className="btn btn-primary" 
+                      onClick={handleSubmit} 
+                      disabled={status === 'submitting' || !account} 
+                      style={{ 
+                        padding: '13px 28px', 
+                        fontSize: 15,
+                        flex: 1,
+                        boxShadow: '0 8px 24px rgba(13,148,136,0.3)'
+                      }}
+                    >
+                      {status === 'submitting' ? <><span className="spinner" />Submitting…</> : '🛡️ Complete Submission'}
                     </button>
                   ) : (
-                    <button className="btn btn-primary" onClick={goNext} style={{ padding: '13px 28px', fontSize: 15 }}>OK →</button>
+                    <button 
+                      className="btn btn-primary" 
+                      onClick={goNext} 
+                      style={{ 
+                        padding: '13px 32px', 
+                        fontSize: 15,
+                        minWidth: 120
+                      }}
+                    >
+                      OK →
+                    </button>
                   )}
-                  {currentStep > 0 && <button className="btn btn-secondary btn-sm" onClick={goBack} style={{ opacity: 0.6 }}>↑ Back</button>}
-                  <span className="hide-mobile" style={{ fontSize: 12, color: 'var(--text-3)', marginLeft: 4 }}>press <kbd style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, padding: '1px 5px', fontFamily: 'inherit' }}>Enter</kbd></span>
+                  
+                  <span className="hide-mobile" style={{ fontSize: 12, color: 'var(--text-3)', marginLeft: 8 }}>
+                    press <kbd style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, padding: '1px 5px', fontFamily: 'inherit' }}>Enter</kbd>
+                  </span>
                 </div>
               </motion.div>
             </AnimatePresence>
