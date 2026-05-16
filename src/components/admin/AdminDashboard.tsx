@@ -557,7 +557,7 @@ export default function AdminDashboard() {
                   <span style={{ fontSize: 9, fontWeight: 800, color: s.status === 'done' ? '#34d399' : s.status === 'rejected' ? '#ef4444' : s.status === 'reviewing' ? '#fbbf24' : '#60a5fa' }}>{s.status || 'new'}</span>
                 </div>
                 <div style={{ fontSize: 12, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} className="mono">
-                  {s.submitterAddress.slice(0, 6)}...{s.submitterAddress.slice(-4)}
+                  {s.submitterAddress ? `${s.submitterAddress.slice(0, 6)}...${s.submitterAddress.slice(-4)}` : 'Unknown'}
                 </div>
                 <div style={{ fontSize: 10, color: 'var(--text-4)' }}>{new Date(s.timestamp).toLocaleDateString()}</div>
               </button>
