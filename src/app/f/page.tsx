@@ -8,6 +8,7 @@ import { getFormByObjectId } from '@/lib/walrus-onchain';
 import type { FormConfig, Submission, SessionField } from '@/types/walform';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSearchParams } from 'next/navigation';
+import { useIsMobile } from '@/hooks/useMediaQuery';
 
 function uid() { return Math.random().toString(36).slice(2, 10); }
 function shorten(a: string) { return `${a.slice(0, 6)}…${a.slice(-4)}`; }
@@ -297,6 +298,7 @@ function FormPageContent() {
   const account = useCurrentAccount();
   const wallet = useCurrentWallet();
   const searchParams = useSearchParams();
+  const isMobile = useIsMobile();
   const formObjectId = searchParams.get('formId') || '';
 
   const [config, setConfig] = useState<FormConfig | null>(null);
@@ -597,7 +599,7 @@ function FormPageContent() {
         className="mobile-p-4"
         style={{ 
           position: 'fixed', top: 0, left: 0, right: 0, 
-          padding: '12px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', 
+          padding: isMobile ? '12px 16px' : '12px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', 
           borderBottom: '1px solid rgba(255,255,255,0.08)', background: 'rgba(9,9,11,0.85)', backdropFilter: 'blur(16px)', zIndex: 90 
         }}
       >
@@ -630,7 +632,7 @@ function FormPageContent() {
       {/* Content wrapper — top padding clears the fixed header on all screen sizes */}
       <div 
         className="form-content-wrapper"
-        style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '100px 40px 60px', position: 'relative' }}
+        style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: isMobile ? '80px 20px 40px' : '100px 40px 60px', position: 'relative' }}
       >
         {/* Floating mascot — desktop decoration only */}
         <div className="form-mascot-deco" aria-hidden>

@@ -750,7 +750,7 @@ export default function Home() {
         <BackgroundParticles isMobile={isMobile} />
         <FloatingWalrus mousePos={mousePos} isMobile={isMobile} />
         <header style={{ 
-          padding:'32px 48px', 
+          padding: isMobile ? '20px' : '32px 48px', 
           display:'flex', 
           alignItems:'center', 
           justifyContent:'space-between', 
@@ -996,7 +996,7 @@ export default function Home() {
             
             <div style={{ 
               display: 'grid', 
-              gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', 
+              gridTemplateColumns: isMobile ? '1fr' : 'repeat(4, 1fr)', 
               gap: '24px', 
               position: 'relative' 
             }}>
@@ -1060,8 +1060,8 @@ export default function Home() {
           </section>
 
           {/* -- PART 3: UNIQUENESS / ADVANTAGES ------------------------------ */}
-          <section style={{ width: '100%', maxWidth: '1200px', margin: '200px auto 0', padding: '0 24px' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '24px' }}>
+          <section style={{ width: '100%', maxWidth: '1200px', margin: isMobile ? '80px auto 0' : '200px auto 0', padding: '0 24px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 300px), 1fr))', gap: '24px' }}>
               {([
                 { title: '100% On-Chain', desc: 'Forms, submissions, and media are stored natively on decentralized infrastructure without relying on centralized databases.', icon: '🔗' },
                 { title: 'Walrus Durability', desc: 'Powered by Walrus for resilient, permanent, and scalable decentralized storage.', image: '/walrus-official.png', imageStyle: { mixBlendMode: 'screen' } as any },
@@ -1075,7 +1075,7 @@ export default function Home() {
                   transition={{ delay: i * 0.1, duration: 0.5 }}
                   whileHover={{ y: -12, transition: { duration: 0.2 } }}
                   style={{
-                    padding: '48px',
+                    padding: isMobile ? '24px' : '48px',
                     borderRadius: '32px',
                     background: 'rgba(255,255,255,0.02)',
                     border: '1px solid var(--border)',
@@ -1115,11 +1115,11 @@ export default function Home() {
 
           {/* OFFICIAL REFERENCES */}
           <section style={{ 
-            marginTop: '160px', 
-            padding: '120px 24px', 
+            marginTop: isMobile ? '80px' : '160px', 
+            padding: isMobile ? '60px 24px' : '120px 24px', 
             borderTop: '1px solid var(--border)', 
             maxWidth: '1100px', 
-            margin: '160px auto 0', 
+            margin: isMobile ? '80px auto 0' : '160px auto 0', 
             position: 'relative', 
             zIndex: 10
           }}>
@@ -1156,7 +1156,7 @@ export default function Home() {
 
             <div style={{ 
               display: 'grid', 
-              gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', 
+              gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))', 
               gap: '32px',
               justifyContent: 'center'
             }}>

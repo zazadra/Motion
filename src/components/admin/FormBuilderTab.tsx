@@ -4,6 +4,7 @@ import type { FormConfig, SessionField, SessionFieldType } from '@/types/walform
 import { saveAdminConfig } from '@/lib/fields';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useWalletConnection } from '@/hooks/useWalletConnection';
+import { useIsMobile } from '@/hooks/useMediaQuery';
 
 function uid() { return Math.random().toString(36).slice(2, 9); }
 
@@ -129,6 +130,12 @@ export function FormBuilderTab({ config, onChange, ownerAddress }: {
   const [activeFieldId, setActiveFieldId] = useState<string | null>(null);
   const [dragIdx, setDragIdx] = useState<number | null>(null);
   const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
+  const isMobile = useIsMobile();
+  const [mobileMode, setMobileMode] = useState<'elements' | 'builder' | 'settings'>('builder');
+
+  useEffect(() => {
+    if (activeFieldId && isMobile) setMobileMode('settings');
+  }, [activeFieldId]);
 
   function reorderFields(fromIdx: number, toIdx: number) {
     if (fromIdx === toIdx) return;
@@ -156,6 +163,7 @@ export function FormBuilderTab({ config, onChange, ownerAddress }: {
     };
     onChange({ ...config, fields: [...config.fields, f] });
     setActiveFieldId(f.id);
+    if (isMobile) setMobileMode('builder');
   }
   
   const moveField = (index: number, direction: 'up' | 'down') => {
@@ -273,27 +281,41 @@ export function FormBuilderTab({ config, onChange, ownerAddress }: {
   const activeField = config.fields.find(f => f.id === activeFieldId);
 
   return (
-    <div style={{
-      display: 'grid',
-      gridTemplateColumns: 'repeat(12, 1fr)',
-      gap: '20px',
-      alignItems: 'start',
-      maxWidth: '1280px',
-      margin: '0 auto'
-    }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', maxWidth: '1280px', margin: '0 auto' }}>
+      {isMobile && (
+        <div className="tab-pill" style={{ marginBottom: '10px', padding: 6 }}>
+          <button className={`tab-pill-btn ${mobileMode === 'elements' ? 'active' : ''}`} onClick={() => setMobileMode('elements')} style={{ flex: 1 }}>Add</button>
+          <button className={`tab-pill-btn ${mobileMode === 'builder' ? 'active' : ''}`} onClick={() => setMobileMode('builder')} style={{ flex: 1 }}>Build</button>
+          <button className={`tab-pill-btn ${mobileMode === 'settings' ? 'active' : ''}`} onClick={() => setMobileMode('settings')} style={{ flex: 1 }}>Settings</button>
+        </div>
+      )}
+      
+      <div style={{
+        display: isMobile ? 'block' : 'grid',
+        gridTemplateColumns: isMobile ? '1fr' : 'repeat(12, 1fr)',
+        gap: '20px',
+        alignItems: 'start'
+      }}>
       {/* LEFT COLUMN: Elements (approx 20%) */}
-      <div style={{ gridColumn: 'span 3', position: 'sticky', top: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+      <div style={{ 
+        gridColumn: 'span 3', 
+        position: isMobile ? 'static' : 'sticky', 
+        top: '24px', 
+        display: isMobile ? (mobileMode === 'elements' ? 'flex' : 'none') : 'flex', 
+        flexDirection: 'column', 
+        gap: '16px' 
+      }}>
         <div style={{ padding: '16px', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border)', borderRadius: '20px', backdropFilter: 'blur(20px)', boxShadow: '0 8px 32px rgba(0,0,0,0.2)' }}>
           <h3 style={{ fontSize: '11px', fontWeight: 800, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '12px', textAlign: 'center' }}>
             Form Elements
           </h3>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '6px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : '1fr', gap: '6px' }}>
             {FIELD_TYPES.map(type => (
               <motion.button
                 key={type.value}
                 whileHover={{ scale: 1.02, backgroundColor: 'rgba(13, 148, 136, 0.12)', borderColor: 'rgba(13, 148, 136, 0.4)' }}
                 whileTap={{ scale: 0.98 }}
-                onClick={() => addField(type.value)}
+                onClick={() => { addField(type.value); if(isMobile) setMobileMode('builder'); }}
                 style={{
                   display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px',
                   background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border)', borderRadius: '10px',
@@ -313,9 +335,10 @@ export function FormBuilderTab({ config, onChange, ownerAddress }: {
       {/* CENTER COLUMN: Main Builder Area (approx 55%) */}
       <div style={{ 
         gridColumn: 'span 6', 
-        height: 'calc(100vh - 240px)', 
-        overflowY: 'auto', 
-        padding: '20px 16px 40px 16px', 
+        height: isMobile ? 'auto' : 'calc(100vh - 240px)', 
+        overflowY: isMobile ? 'visible' : 'auto', 
+        display: isMobile ? (mobileMode === 'builder' ? 'block' : 'none') : 'block',
+        padding: isMobile ? '20px 8px' : '20px 16px 40px 16px', 
         background: 'rgba(5, 10, 18, 0.4)',
         borderRadius: '24px',
         border: '1px solid var(--border)',
@@ -385,7 +408,10 @@ export function FormBuilderTab({ config, onChange, ownerAddress }: {
                     setDragOverIdx(null);
                   }}
                   onDragEnd={() => { setDragIdx(null); setDragOverIdx(null); }}
-                  onClick={() => setActiveFieldId(f.id)}
+                  onClick={() => {
+                    setActiveFieldId(f.id);
+                    if (isMobile) setMobileMode('settings');
+                  }}
                   style={{
                     padding: '10px 14px',
                     borderRadius: '14px',
@@ -464,10 +490,10 @@ export function FormBuilderTab({ config, onChange, ownerAddress }: {
       {/* RIGHT COLUMN: Settings & Publish — always-visible fixed layout */}
       <div style={{ 
         gridColumn: 'span 3', 
-        position: 'sticky', 
+        position: isMobile ? 'static' : 'sticky', 
         top: '24px', 
-        height: 'calc(100vh - 240px)',
-        display: 'flex', 
+        display: isMobile ? (mobileMode === 'settings' ? 'flex' : 'none') : 'flex',
+        height: isMobile ? 'auto' : 'calc(100vh - 240px)',
         flexDirection: 'column', 
         gap: '0',
         background: 'rgba(255,255,255,0.02)', 

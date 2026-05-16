@@ -8,6 +8,7 @@ import { getOwnedForms, getOwnedSubmissions, getFormByObjectId, updateSubmission
 import { FormConfig, Submission } from '@/types/walform';
 import { motion, AnimatePresence } from 'framer-motion';
 import { decryptWithSeal, decryptData } from '@/lib/seal';
+import { useIsMobile } from '@/hooks/useMediaQuery';
 
 function MediaPreview({ url, type = 'auto' }: { url: string, type?: 'auto' | 'image' | 'video' }) {
   // Enhanced detection for media
@@ -279,6 +280,14 @@ export default function AdminDashboard() {
   const [decryptedDataMap, setDecryptedDataMap] = useState<Record<string, any>>({});
   const [toast, setToast] = useState<{message: string, visible: boolean}>({ message: '', visible: false });
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
+  const isMobile = useIsMobile();
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [mobileView, setMobileView] = useState<'list' | 'detail'>('list');
+
+  // Handle mobile view switching
+  useEffect(() => {
+    if (selectedSubId) setMobileView('detail');
+  }, [selectedSubId]);
 
   function showToast(msg: string) {
     setToast({ message: msg, visible: true });
@@ -466,7 +475,14 @@ export default function AdminDashboard() {
   if (!account) return <div style={{ height: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><ConnectButton instance={dAppKit} /></div>;
 
   return (
-    <div className="dashboard-layout-root" style={{ display: 'grid', gridTemplateColumns: '280px 1fr', height: '100dvh', background: 'var(--bg)', overflow: 'hidden' }}>
+    <div className="dashboard-layout-root" style={{ 
+      display: 'grid', 
+      gridTemplateColumns: isMobile ? '1fr' : '280px 1fr', 
+      height: '100dvh', 
+      background: 'var(--bg)', 
+      overflow: 'hidden',
+      position: 'relative'
+    }}>
       {toast.visible && (
         <motion.div 
           initial={{ opacity: 0, y: 50, scale: 0.9 }} 
@@ -485,7 +501,22 @@ export default function AdminDashboard() {
         </motion.div>
       )}
 
-      <aside style={{ borderRight: '1px solid var(--border)', padding: 24, display: 'flex', flexDirection: 'column', gap: 24, overflow: 'hidden' }}>
+      <aside style={{ 
+        borderRight: '1px solid var(--border)', 
+        padding: 24, 
+        display: isMobile ? (mobileSidebarOpen ? 'flex' : 'none') : 'flex', 
+        flexDirection: 'column', 
+        gap: 24, 
+        overflow: 'hidden',
+        position: isMobile ? 'fixed' : 'relative',
+        top: 0, left: 0, bottom: 0, width: 280,
+        background: 'var(--bg)',
+        zIndex: 1000,
+        boxShadow: isMobile ? '20px 0 50px rgba(0,0,0,0.5)' : 'none'
+      }}>
+        {isMobile && (
+          <button onClick={() => setMobileSidebarOpen(false)} style={{ position: 'absolute', top: 16, right: 16, background: 'none', border: 'none', color: 'var(--text-3)', fontSize: 20 }}>✕</button>
+        )}
         <div style={{ paddingBottom: 16, borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
           <label style={{ fontSize: 10, fontWeight: 800, color: 'var(--text-3)', marginBottom: 8, display: 'block' }}>OPEN BY ID</label>
           <input className="input" placeholder="0x..." value={openByIdInput} onChange={e => setOpenByIdInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleOpenById()} style={{ fontSize: 12, marginBottom: 8 }} />
@@ -497,7 +528,7 @@ export default function AdminDashboard() {
           {formsLoading ? <div className="spinner" /> : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
               {forms.map(f => (
-                <button key={f.suiObjectId} onClick={() => setSelectedFormId(f.suiObjectId)} className={`sidebar-link ${selectedFormId === f.suiObjectId ? 'active' : ''}`} style={{ width: '100%', textAlign: 'left' }}>
+                <button key={f.suiObjectId} onClick={() => { setSelectedFormId(f.suiObjectId); if(isMobile) setMobileSidebarOpen(false); }} className={`sidebar-link ${selectedFormId === f.suiObjectId ? 'active' : ''}`} style={{ width: '100%', textAlign: 'left' }}>
                   {f.title || 'Untitled Form'}
                 </button>
               ))}
@@ -506,11 +537,31 @@ export default function AdminDashboard() {
         </div>
       </aside>
 
-      <main style={{ display: 'grid', gridTemplateColumns: '340px 1fr', height: '100%', overflow: 'hidden' }}>
-        <section style={{ borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
-          <div style={{ padding: 24, borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
+      {isMobile && mobileSidebarOpen && (
+        <div onClick={() => setMobileSidebarOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 999, backdropFilter: 'blur(4px)' }} />
+      )}
+
+      <main style={{ 
+        display: 'grid', 
+        gridTemplateColumns: isMobile ? '1fr' : '340px 1fr', 
+        height: '100%', 
+        overflow: 'hidden' 
+      }}>
+        <section style={{ 
+          borderRight: '1px solid var(--border)', 
+          display: isMobile ? (mobileView === 'list' ? 'flex' : 'none') : 'flex', 
+          flexDirection: 'column', 
+          height: '100%', 
+          overflow: 'hidden' 
+        }}>
+          <div style={{ padding: isMobile ? '16px' : '24px', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <h2 style={{ fontSize: 18, fontWeight: 900 }}>Responses</h2>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                {isMobile && (
+                  <button onClick={() => setMobileSidebarOpen(true)} style={{ background: 'none', border: 'none', color: 'var(--text-1)', fontSize: 20, padding: 0 }}>☰</button>
+                )}
+                <h2 style={{ fontSize: isMobile ? 16 : 18, fontWeight: 900 }}>Responses</h2>
+              </div>
               <div style={{ display: 'flex', gap: 6 }}>
                 <button className="btn btn-secondary btn-sm" onClick={() => exportData('csv')} title="Download CSV">
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 4 }}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
@@ -523,34 +574,34 @@ export default function AdminDashboard() {
               </div>
             </div>
             {/* Status Grid Refinement */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8, marginBottom: 16 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(4, 1fr)' : 'repeat(2, 1fr)', gap: isMobile ? 4 : 8, marginBottom: 16 }}>
               <div 
                 onClick={() => setStatusFilter(statusFilter === 'new' ? null : 'new')}
-                style={{ cursor: 'pointer', textAlign: 'center', background: statusFilter === 'new' ? 'rgba(13,148,136,0.1)' : 'rgba(255,255,255,0.03)', padding: '10px 8px', borderRadius: 12, border: statusFilter === 'new' ? '1px solid var(--accent)' : '1px solid var(--border)', minWidth: 0, transition: 'all 0.2s' }}
+                style={{ cursor: 'pointer', textAlign: 'center', background: statusFilter === 'new' ? 'rgba(13,148,136,0.1)' : 'rgba(255,255,255,0.03)', padding: isMobile ? '6px 2px' : '10px 8px', borderRadius: 12, border: statusFilter === 'new' ? '1px solid var(--accent)' : '1px solid var(--border)', minWidth: 0, transition: 'all 0.2s' }}
               >
-                <p style={{ fontSize: 9, fontWeight: 800, color: 'var(--text-3)', letterSpacing: '0.05em' }}>NEW</p>
-                <p style={{ fontSize: 20, fontWeight: 900, color: 'var(--accent-2)' }}>{stats.new}</p>
+                <p style={{ fontSize: isMobile ? 7 : 9, fontWeight: 800, color: 'var(--text-3)', letterSpacing: '0.05em' }}>NEW</p>
+                <p style={{ fontSize: isMobile ? 16 : 20, fontWeight: 900, color: 'var(--accent-2)' }}>{stats.new}</p>
               </div>
               <div 
                 onClick={() => setStatusFilter(statusFilter === 'reviewing' ? null : 'reviewing')}
-                style={{ cursor: 'pointer', textAlign: 'center', background: statusFilter === 'reviewing' ? 'rgba(251,191,36,0.1)' : 'rgba(255,255,255,0.03)', padding: '10px 8px', borderRadius: 12, border: statusFilter === 'reviewing' ? '1px solid #fbbf24' : '1px solid var(--border)', minWidth: 0, transition: 'all 0.2s' }}
+                style={{ cursor: 'pointer', textAlign: 'center', background: statusFilter === 'reviewing' ? 'rgba(251,191,36,0.1)' : 'rgba(255,255,255,0.03)', padding: isMobile ? '6px 2px' : '10px 8px', borderRadius: 12, border: statusFilter === 'reviewing' ? '1px solid #fbbf24' : '1px solid var(--border)', minWidth: 0, transition: 'all 0.2s' }}
               >
-                <p style={{ fontSize: 9, fontWeight: 800, color: 'var(--text-3)', letterSpacing: '0.05em' }}>REVIEWING</p>
-                <p style={{ fontSize: 20, fontWeight: 900, color: statusFilter === 'reviewing' ? '#fbbf24' : 'var(--text-1)' }}>{stats.reviewing}</p>
+                <p style={{ fontSize: isMobile ? 7 : 9, fontWeight: 800, color: 'var(--text-3)', letterSpacing: '0.05em' }}>REVIEWING</p>
+                <p style={{ fontSize: isMobile ? 16 : 20, fontWeight: 900, color: statusFilter === 'reviewing' ? '#fbbf24' : 'var(--text-1)' }}>{stats.reviewing}</p>
               </div>
               <div 
                 onClick={() => setStatusFilter(statusFilter === 'done' ? null : 'done')}
-                style={{ cursor: 'pointer', textAlign: 'center', background: statusFilter === 'done' ? 'rgba(16,185,129,0.1)' : 'rgba(255,255,255,0.03)', padding: '10px 8px', borderRadius: 12, border: statusFilter === 'done' ? '1px solid #10b981' : '1px solid var(--border)', minWidth: 0, transition: 'all 0.2s' }}
+                style={{ cursor: 'pointer', textAlign: 'center', background: statusFilter === 'done' ? 'rgba(16,185,129,0.1)' : 'rgba(255,255,255,0.03)', padding: isMobile ? '6px 2px' : '10px 8px', borderRadius: 12, border: statusFilter === 'done' ? '1px solid #10b981' : '1px solid var(--border)', minWidth: 0, transition: 'all 0.2s' }}
               >
-                <p style={{ fontSize: 9, fontWeight: 800, color: 'var(--text-3)', letterSpacing: '0.05em' }}>DONE</p>
-                <p style={{ fontSize: 20, fontWeight: 900, color: '#10b981' }}>{stats.done}</p>
+                <p style={{ fontSize: isMobile ? 7 : 9, fontWeight: 800, color: 'var(--text-3)', letterSpacing: '0.05em' }}>DONE</p>
+                <p style={{ fontSize: isMobile ? 16 : 20, fontWeight: 900, color: '#10b981' }}>{stats.done}</p>
               </div>
               <div 
                 onClick={() => setStatusFilter(statusFilter === 'rejected' ? null : 'rejected')}
-                style={{ cursor: 'pointer', textAlign: 'center', background: statusFilter === 'rejected' ? 'rgba(239,68,68,0.1)' : 'rgba(239,68,68,0.05)', padding: '10px 8px', borderRadius: 12, border: statusFilter === 'rejected' ? '1px solid #ef4444' : '1px solid rgba(239,68,68,0.2)', minWidth: 0, transition: 'all 0.2s' }}
+                style={{ cursor: 'pointer', textAlign: 'center', background: statusFilter === 'rejected' ? 'rgba(239,68,68,0.1)' : 'rgba(239,68,68,0.05)', padding: isMobile ? '6px 2px' : '10px 8px', borderRadius: 12, border: statusFilter === 'rejected' ? '1px solid #ef4444' : '1px solid rgba(239,68,68,0.2)', minWidth: 0, transition: 'all 0.2s' }}
               >
-                <p style={{ fontSize: 9, fontWeight: 800, color: 'var(--error)', letterSpacing: '0.05em' }}>REJECTED</p>
-                <p style={{ fontSize: 20, fontWeight: 900, color: 'var(--error)' }}>{stats.rejected}</p>
+                <p style={{ fontSize: isMobile ? 7 : 9, fontWeight: 800, color: 'var(--error)', letterSpacing: '0.05em' }}>REJECTED</p>
+                <p style={{ fontSize: isMobile ? 16 : 20, fontWeight: 900, color: 'var(--error)' }}>{stats.rejected}</p>
               </div>
             </div>
             {selectedForm && (
@@ -569,7 +620,15 @@ export default function AdminDashboard() {
             ) : loading ? <div className="spinner" /> : filteredSubs.length === 0 ? (
               <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-4)' }}>No responses found.</div>
             ) : filteredSubs.map((s) => (
-              <button key={s.id} onClick={() => setSelectedSubId(s.id)} className={`sub-card-premium ${selectedSubId === s.id ? 'active' : ''}`} style={{ width: '100%', textAlign: 'left', marginBottom: 8, padding: 16, borderRadius: 12, border: '1px solid var(--border)', background: selectedSubId === s.id ? 'rgba(13,148,136,0.08)' : 'rgba(255,255,255,0.02)' }}>
+              <button 
+                key={s.id} 
+                onClick={() => {
+                  setSelectedSubId(s.id);
+                  if (isMobile) setMobileView('detail');
+                }} 
+                className={`sub-card-premium ${selectedSubId === s.id ? 'active' : ''}`} 
+                style={{ width: '100%', textAlign: 'left', marginBottom: 8, padding: 16, borderRadius: 12, border: '1px solid var(--border)', background: selectedSubId === s.id ? 'rgba(13,148,136,0.08)' : 'rgba(255,255,255,0.02)' }}
+              >
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
                   <span style={{ fontSize: 10, fontWeight: 800, color: 'var(--text-3)' }}>#{subs.length - subs.indexOf(s)}</span>
                   <span style={{ fontSize: 9, fontWeight: 800, color: s.status === 'done' ? '#34d399' : s.status === 'rejected' ? '#ef4444' : s.status === 'reviewing' ? '#fbbf24' : '#60a5fa' }}>{s.status || 'new'}</span>
@@ -583,7 +642,25 @@ export default function AdminDashboard() {
           </div>
         </section>
 
-        <section style={{ height: '100%', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+        <section style={{ 
+          height: '100%', 
+          overflow: 'hidden', 
+          display: isMobile ? (mobileView === 'detail' ? 'flex' : 'none') : 'flex', 
+          flexDirection: 'column',
+          position: 'relative'
+        }}>
+          {isMobile && mobileView === 'detail' && (
+            <button 
+              onClick={() => { setMobileView('list'); setSelectedSubId(null); }} 
+              style={{ 
+                position: 'absolute', top: 24, left: 24, zIndex: 10,
+                background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', 
+                borderRadius: 8, padding: '4px 12px', color: 'var(--text-1)', fontSize: 12, fontWeight: 700
+              }}
+            >
+              ← Back
+            </button>
+          )}
           {selectedSub ? (
             <SubmissionDetail 
               sub={selectedSub} 
