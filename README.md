@@ -19,7 +19,8 @@ Walform lets anyone build and publish decentralized application forms on the **S
 - 🌐 **Fully on-chain** — no central database; Walrus stores all data permanently
 - 📸 **Media uploads** — file attachments uploaded directly from the browser, signed by the user
 - 🎨 **Rich form builder** — text, textarea, rating, checkbox, file upload, date picker fields
-- 📊 **Admin dashboard** — view submissions, export data, manage form status
+- 📊 **Admin Dashboard** — view submissions, export data, manage form status
+- 🛡️ **Security Seal** — Optional E2E asymmetric encryption (RSA-OAEP) for response data
 
 ---
 
@@ -54,6 +55,19 @@ All media uploads use the official `@mysten/walrus` SDK with the **upload relay*
 
 > **No server-side signing.** The backend cannot and does not sign Sui transactions.  
 > The server handles only indexing, registry, and admin queries.
+
+---
+
+## Security Seal (E2E Encryption)
+
+Walform features an optional **Security Seal** for sensitive data collection. When enabled:
+
+1. **Key Generation**: The admin generates an **RSA-2048** key pair in the browser.
+2. **Sealing**: The private key is encrypted (AES-GCM) with the admin's wallet signature and stored in the form configuration on Walrus.
+3. **Encryption**: Responses are encrypted in the submitter's browser using the public key before being sent to Sui/Walrus.
+4. **Decryption**: Only the admin can unseal the private key (requires a wallet signature) to view the original response data.
+
+*No unencrypted data ever touches the blockchain or storage network when the Seal is active.*
 
 ---
 
@@ -109,6 +123,7 @@ npm start
 No environment variables are required for the frontend. The app connects directly to:
 
 - **Sui RPC**: `https://fullnode.mainnet.sui.io`
+- **Walform Package ID**: `0xebb99d93ce26307c536308339144b05c32c0ac20f04156b61b1805e713a11693`
 - **Walrus Upload Relay**: `https://upload-relay.mainnet.walrus.space`
 - **Walrus Aggregators**: `https://aggregator.walrus-mainnet.walrus.space` and mirrors
 
